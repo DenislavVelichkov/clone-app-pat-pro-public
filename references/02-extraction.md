@@ -4,7 +4,7 @@
 
 This file is the Stage 2 reference (see `stage-prompts.md` → `## Stage 2: Extraction`). It implements **contract §3 (A–I)** exactly and writes **only** the artifact paths in **contract §1**. When this file and `00-contract.md` disagree, the contract wins.
 
-**Browser tool — Claude Chrome extension (`mcp__claude-in-chrome__*`).** Extraction reads values off the REAL, authed site, so it uses the Claude Chrome extension you're already logged into. Every JS capture below runs through `mcp__claude-in-chrome__javascript_tool`; navigation through `mcp__claude-in-chrome__navigate`; DOM reads through `read_page` / `find` / a `javascript_tool` `outerHTML` read. Asset/font byte downloads and cross-origin stylesheet refetches stay as Bash `curl` (not browser-tool-specific). There is **one Chrome**: run extraction **sequentially, one route / one tab at a time** — never two browser actions at once.
+**Browser tool — configured browser-control tool (`browser-control tools available in this Codex session`).** Extraction reads values off the REAL, authed site, so it uses the configured browser-control tool you're already logged into. Every JS capture below runs through `JavaScript evaluation capability`; navigation through `navigation capability`; DOM reads through DOM inspection capability / element lookup capability / a `JavaScript evaluation capability` `outerHTML` read. Asset/font byte downloads and cross-origin stylesheet refetches stay as Bash `curl` (not browser-tool-specific). There is **one browser**: run extraction **sequentially, one route / one tab at a time** — never two browser actions at once.
 
 ---
 
@@ -12,10 +12,10 @@ This file is the Stage 2 reference (see `stage-prompts.md` → `## Stage 2: Extr
 
 **Inputs you read:**
 - `clone-workspace/{name}/00-config.json` — `target_url`, `pages[]`, `viewports`, `stack`, `gate`.
-- `clone-workspace/{name}/01-recon/sitemap.json` — `{ "routes": [...] }`. You extract **one `{PAGE}` at a time** (sequential — one Chrome, one tab).
+- `clone-workspace/{name}/01-recon/sitemap.json` — `{ "routes": [...] }`. You extract **one `{PAGE}` at a time** (sequential — one browser, one tab).
 - `clone-workspace/{name}/01-recon/recon.json` — may already carry `themes` and the framework fingerprint (§3-I). Read it; do not re-derive what's already measured.
 
-**Tool: the Claude Chrome extension (`mcp__claude-in-chrome__*`).** Extraction reads off the REAL, logged-in site, so you drive the Chrome you're already authed in — JS via `mcp__claude-in-chrome__javascript_tool`, navigation via `mcp__claude-in-chrome__navigate`, DOM reads via `read_page` / `find` / a `javascript_tool` `outerHTML` read. **No `--session` isolation, no SSH/Mac Mini/Playwright.** There is **one Chrome**: run routes **sequentially, one tab at a time**. Set per-route path vars in the shell for the `curl` downloads/refetches:
+**Tool: the configured browser-control tool (`browser-control tools available in this Codex session`).** Extraction reads off the REAL, logged-in site, so you drive the browser you're already authed in — JS via `JavaScript evaluation capability`, navigation via `navigation capability`, DOM reads via DOM inspection capability / element lookup capability / a `JavaScript evaluation capability` `outerHTML` read. **Use the configured authenticated browser session for page interaction.** There is **one browser**: run routes **sequentially, one tab at a time**. Set per-route path vars in the shell for the `curl` downloads/refetches:
 
 ```bash
 URL="$(jq -r .target_url clone-workspace/{name}/00-config.json)"
@@ -25,23 +25,23 @@ EXT="clone-workspace/{name}/02-extraction"
 mkdir -p "$FRAG" "$EXT/assets/img" "$EXT/assets/svg" "$EXT/assets/fonts" /tmp/extract-{PAGE}
 ```
 
-**The JS-capture pattern (mandatory).** Every capture below is large JS — an IIFE that ends with `return JSON.stringify(...)`. **Run it through `mcp__claude-in-chrome__javascript_tool`** (the snippet bodies below are unchanged; they're the same JS, just executed via the extension instead of an `eval` CLI). Take the string the tool returns and write it to the fragment file (Write tool, or `cat`/redirect via Bash). After every write, sanity-check it parsed: `jq -e . "$FRAG/$SLUG.computed.json" >/dev/null || echo "PARSE FAIL $SLUG.computed.json"`.
+**The JS-capture pattern (mandatory).** Every capture below is large JS — an IIFE that ends with `return JSON.stringify(...)`. **Run it through `JavaScript evaluation capability`** (the snippet bodies below are unchanged; they're the same JS, just executed via the extension instead of an `eval` CLI). Take the string the tool returns and write it to the fragment file (Write tool, or `cat`/redirect via Bash). After every write, sanity-check it parsed: `jq -e . "$FRAG/$SLUG.computed.json" >/dev/null || echo "PARSE FAIL $SLUG.computed.json"`.
 
 **Open + fully hydrate before reading anything:**
 
-1. `mcp__claude-in-chrome__navigate` → `$URL{PAGE}`.
+1. `navigation capability` → `$URL{PAGE}`.
 2. Wait ~2.5s for hydration.
-3. Force lazy content to mount via `mcp__claude-in-chrome__javascript_tool` — same snippet, scroll to bottom in steps then back to top:
+3. Force lazy content to mount via `JavaScript evaluation capability` — same snippet, scroll to bottom in steps then back to top:
 
 ```js
 (async()=>{const h=document.body.scrollHeight;for(let y=0;y<h;y+=600){window.scrollTo(0,y);await new Promise(r=>setTimeout(r,120));}window.scrollTo(0,0);await new Promise(r=>setTimeout(r,400));return document.readyState;})()
 ```
 
-If the route is blank, redirects to `/login`, or shows an auth wall → **do not fabricate**. Write what you safely got, set the task flag, and emit `<promise>BLOCKED: auth-wall on {PAGE}</promise>` (contract §6). (Note: because you're driving the real, already-logged-in Chrome, a genuine auth wall here is rare — but if the session is logged out, do not fabricate.)
+If the route is blank, redirects to login, or is blocked, record the route and reason in `status.json`, report the blocker, and stop before extraction. Do not treat the login or error page as the reference.
 
-**Screenshots** (the optional interaction-state captures below) follow contract §11: take with the Chrome extension's screenshot tool (`mcp__claude-in-chrome__computer` action `screenshot`) as a visual reference only — the file may not persist to disk in this environment, so it is a visual aid, never the source of a value. The ground truth is the DOM + computed styles you read via `mcp__claude-in-chrome__javascript_tool`.
+**Screenshots** (the optional interaction-state captures below) follow contract §11: take with the configured browser tool's screenshot capability (`interaction or screenshot capability` action `screenshot`) as a visual reference only — the file may not persist to disk in this environment, so it is a visual aid, never the source of a value. The ground truth is the DOM + computed styles you read via `JavaScript evaluation capability`.
 
-**Evidence order when sources conflict (contract §3 / §7):** `CSSOM authored rules > CDP forced-state computed > deduped computed archetypes > screenshot estimate`. **Anti-hallucination:** a value you cannot read is recorded as `null` with a `reason` — never invented, never carried over from memory.
+**Evidence order when sources conflict (contract §3 / §7):** `CSSOM authored rules > driven interaction-state styles > deduped computed archetypes > screenshot estimate`. **Anti-hallucination:** a value you cannot read is recorded as `null` with a `reason` — never invented, never carried over from memory.
 
 **Output map (contract §1) — what is per-route vs shared:**
 
@@ -58,7 +58,7 @@ If the route is blank, redirects to `/login`, or shows an auth wall → **do not
 | `assets.json` | **shared** | read-modify-write (merge) |
 | `assets/{img,svg,fonts}/*` | shared dir | content-hashed filenames (no clobber) |
 
-> **Shared files.** Routes run sequentially (one Chrome), so the shared JSONs (`css-variables.json`, `all-styles.json`, `fonts.json`, `assets.json`) are read-modify-write **merged** across routes — each route folds its partial into the existing file rather than blind-overwriting (see §9). Per-route fragments are collision-free by `{slug}` and are simply overwritten.
+> **Shared files.** Routes run sequentially (one browser), so the shared JSONs (`css-variables.json`, `all-styles.json`, `fonts.json`, `assets.json`) are read-modify-write **merged** across routes — each route folds its partial into the existing file rather than blind-overwriting (see §9). Per-route fragments are collision-free by `{slug}` and are simply overwritten.
 
 ---
 
@@ -122,13 +122,13 @@ Copy-pasteable walker (write to `walker.js`):
 })()
 ```
 
-Run the walker via `mcp__claude-in-chrome__javascript_tool`, then write the returned string to `$FRAG/$SLUG.computed.json` and sanity-check it:
+Run the walker via `JavaScript evaluation capability`, then write the returned string to `$FRAG/$SLUG.computed.json` and sanity-check it:
 
 ```bash
 jq -e '.archetypeCount' "$FRAG/$SLUG.computed.json" >/dev/null || echo "PARSE FAIL computed"
 ```
 
-**Per-section batching (only if a single `javascript_tool` run blows up / OOMs / hits an output limit).** Re-run the same walker via `javascript_tool` but scope `querySelectorAll` to `header,nav,main,section,footer,[role=region]` one at a time (pass a section index as a `{SECTION}` placeholder), tag each archetype with `section`, and `jq -s 'reduce .[] as $f (...)` merge the section files into `$SLUG.computed.json`. Dedup by signature again at merge time (sum counts). Default to the single-pass walker; batch only on failure.
+**Per-section batching (only if a single `JavaScript evaluation capability` run blows up / OOMs / hits an output limit).** Re-run the same walker via `JavaScript evaluation capability` but scope `querySelectorAll` to `header,nav,main,section,footer,[role=region]` one at a time (pass a section index as a `{SECTION}` placeholder), tag each archetype with `section`, and `jq -s 'reduce .[] as $f (...)` merge the section files into `$SLUG.computed.json`. Dedup by signature again at merge time (sum counts). Default to the single-pass walker; batch only on failure.
 
 ---
 
@@ -163,7 +163,7 @@ For every meaningful node read `getComputedStyle(el, P)` for `P ∈ ['::before',
 })()
 ```
 
-Run via `mcp__claude-in-chrome__javascript_tool`; write the returned string to `$FRAG/$SLUG.pseudo.json`.
+Run via `JavaScript evaluation capability`; write the returned string to `$FRAG/$SLUG.pseudo.json`.
 
 ---
 
@@ -171,12 +171,10 @@ Run via `mcp__claude-in-chrome__javascript_tool`; write the returned string to `
 
 Force `:hover :focus :focus-visible :active` and re-read computed; **emit deltas only** (the property names + values that *changed* from the resting computed map). This is where buttons reveal their hover background, links their underline, inputs their focus ring.
 
-**Primary — parse authored state rules from the CSSOM (via `javascript_tool`).** Because the Chrome extension exposes JS evaluation but not a raw CDP `CSS.forcePseudoState` passthrough, the **authored-rule path is the primary method** here — and it's the *highest* item in the evidence order (CSSOM authored rules), so this is not a downgrade. Walk every style rule whose `selectorText` matches `/:hover|:focus|:focus-visible|:active/`, keep the rule's declarations, and resolve which resting archetype each base selector maps to. Record `evidence_method:"cssom-authored"` so the design-spec agent knows the provenance.
-
-**Optional — forced-state computed via `:focus` you can actually drive.** For `:focus`/`:focus-visible` you can force the real thing with `mcp__claude-in-chrome__javascript_tool`: call `el.focus()` on each interactive element, re-read `getComputedStyle`, diff against the resting map, then `el.blur()`. (`:hover`/`:active` aren't reliably forceable without CDP — rely on the authored-rule path for those.) Where you do capture a forced read, record `evidence_method:"forced-computed"` and `{selector, state, deltas:{prop:{from,to}}}`.
+Use driven interaction states when the browser tool supports them: focus or hover a target, read computed styles, compare with the resting values, and record changed properties. Otherwise, parse authored hover/focus/active rules from the CSSOM and label them as authored-rule evidence, not computed results. The authored-rule path is the fallback when direct pseudo-state control is unavailable.
 
 ```js
-// PRIMARY: authored state rules from CSSOM (run via javascript_tool)
+// PRIMARY: authored state rules from CSSOM (run via JavaScript evaluation capability)
 (() => {
   const STATES = [':hover',':focus-visible',':focus',':active'];
   const rules = [];
@@ -193,7 +191,7 @@ Force `:hover :focus :focus-visible :active` and re-read computed; **emit deltas
 })()
 ```
 
-Run via `mcp__claude-in-chrome__javascript_tool`; write the returned string to `$FRAG/$SLUG.states.json`.
+Run via `JavaScript evaluation capability`; write the returned string to `$FRAG/$SLUG.states.json`.
 
 If neither path yields anything (no interactive elements found), write `{"page":"{PAGE}","evidence_method":null,"stateRules":[],"reason":"no interactive elements / no state rules in CSSOM"}` — **null + reason, never invented.**
 
@@ -201,7 +199,7 @@ If neither path yields anything (no interactive elements found), write `{"page":
 
 ## Interaction-state extraction (from the recon interaction map) → `fragments/{slug}.interactions.json`
 
-§3-C above captures CSS pseudo-states — the styling a node *already has* that only switches on under `:hover/:focus/:active`. **This section is a different thing entirely.** A rich-text toolbar that appears when you focus the editor, an opened priority menu, a comment composer, a side panel that slides in when you click a row, a board/list view toggle — **these are real DOM MUTATIONS, not pseudo-states.** Forcing `:hover`/`:focus` via CDP (§3-C) is **NOT enough**: the toolbar/menu/composer/panel are *new DOM that did not exist at first paint* and only come into being after you actually perform the interaction. You cannot read them off the resting page. You must trigger the interaction and capture what newly appears — its structure, its full computed styles, and where/how it was triggered. A clone built without this ships skin-deep (contract §8).
+§3-C captures CSS pseudo-states that alter the styles of an existing node. This section covers different behavior: a toolbar, menu, composer, or panel that is new DOM created by a click or focus action. Trigger the interaction and capture the newly mounted DOM and its computed styles; reading the resting page or applying a pseudo-state alone cannot capture it (contract §8).
 
 **Input.** Read `01-recon/interaction-map.json` and take the entry for **your assigned route** (`route` matches `$URL{PAGE}` / your `{PAGE}`). It lists every interactive element recon exercised, each as `{action_slug, trigger, kind, reveals, screenshot, captured}`.
 
@@ -228,11 +226,11 @@ If neither path yields anything (no interactive elements found), write `{"page":
 
 **Identifying "what newly appeared."** Diff the DOM before/after the interaction: snapshot the set of element references (or a count + a marker) pre-trigger, perform the trigger, then treat nodes present after but absent before as the revealed subtree. A robust approach: record `document.querySelectorAll('*').length` and the existing top-level overlay containers before; after the trigger, take the newly-added nodes (commonly portaled to `body`, or a panel toggled from `hidden`/`display:none` to visible) as the revealed UI.
 
-**Concrete sequence** (per route; reuse the already-open hydrated page in the **Claude Chrome extension** — read the interaction list with Bash `jq`, drive each interaction with `javascript_tool`, write the result with the Write tool / Bash):
+**Concrete sequence** (per route; reuse the already-open hydrated page in the **configured browser-control tool** — read the interaction list with Bash `jq`, drive each interaction with `JavaScript evaluation capability`, write the result with the Write tool / Bash):
 
 ```bash
 MAP="clone-workspace/{name}/01-recon/interaction-map.json"
-# (page already open + hydrated from §0, in the Chrome extension tab)
+# (page already open + hydrated from §0, in the configured browser tab)
 
 # pull this route's interaction list (shell-side bookkeeping)
 jq -c --arg r "$URL{PAGE}" '.[]? // . | select(.route==$r) | .interactions[]?' "$MAP" \
@@ -242,12 +240,12 @@ jq -c --arg r "$URL{PAGE}" '.[]? // . | select(.route==$r) | .interactions[]?' "
 
 For **each** interaction entry (iterate the list above), run these steps in the open tab — one at a time, sequentially:
 
-1. **Mark the pre-interaction DOM** so you can isolate what newly appears — `mcp__claude-in-chrome__javascript_tool`:
+1. **Mark the pre-interaction DOM** so you can isolate what newly appears — `JavaScript evaluation capability`:
    ```js
    (()=>{window.__before=new Set(document.querySelectorAll('*'));return document.querySelectorAll('*').length;})()
    ```
-2. **PERFORM the interaction** (a real DOM mutation, not a forced pseudo-state) on the trigger selector. Drive it with `mcp__claude-in-chrome__javascript_tool` by `kind`: `click` → `document.querySelector(TRIG).click()`; `focus` → `.focus()`; `hover` → dispatch a `pointerover`/`mouseover` `MouseEvent` on the element; `toggle`/menu/panel-open → `.click()`. Then wait ~600ms for the toolbar/menu/composer/panel to mount.
-3. **Snapshot the REVEALED nodes only** (present after, absent before) + their computed styles, using the SAME full property set + signature-dedup + delta-from-default as §3-A — run this via `mcp__claude-in-chrome__javascript_tool` and capture its returned string into `$REVEAL`:
+2. **PERFORM the interaction** (a real DOM mutation, not a forced pseudo-state) on the trigger selector. Drive it with `JavaScript evaluation capability` by `kind`: `click` → `document.querySelector(TRIG).click()`; `focus` → `.focus()`; `hover` → dispatch a `pointerover`/`mouseover` `MouseEvent` on the element; `toggle`/menu/panel-open → `.click()`. Then wait ~600ms for the toolbar/menu/composer/panel to mount.
+3. **Snapshot the REVEALED nodes only** (present after, absent before) + their computed styles, using the SAME full property set + signature-dedup + delta-from-default as §3-A — run this via `JavaScript evaluation capability` and capture its returned string into `$REVEAL`:
 
 ```js
   (() => {
@@ -277,9 +275,9 @@ For **each** interaction entry (iterate the list above), run these steps in the 
   })()
 ```
 
-4. **(Optional) Screenshot the revealed state** for the human/QA trail (contract §11): take it with the Chrome extension's screenshot tool (`mcp__claude-in-chrome__computer` action `screenshot`) as a visual reference — the file may not persist to disk in this environment, so it's the lowest-rank corroboration, never the source of a value.
-5. **ESCAPE / close the state** before the next interaction so captures stay clean — via `javascript_tool`: `document.activeElement.blur(); document.body.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true}))` (or click an empty area of `body`).
-6. **Append** this interaction's object to the route's JSONL, combining the map entry with the `$REVEAL` string the `javascript_tool` returned in step 3:
+4. **(Optional) Screenshot the revealed state** for the human/QA trail (contract §11): take it with the configured browser tool's screenshot capability (`interaction or screenshot capability` action `screenshot`) as a visual reference — the file may not persist to disk in this environment, so it's the lowest-rank corroboration, never the source of a value.
+5. **ESCAPE / close the state** before the next interaction so captures stay clean — via `JavaScript evaluation capability`: `document.activeElement.blur(); document.body.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true}))` (or click an empty area of `body`).
+6. **Append** this interaction's object to the route's JSONL, combining the map entry with the `$REVEAL` string the `JavaScript evaluation capability` returned in step 3:
    ```bash
    printf '%s\n%s\n' "$entry" "$REVEAL" | jq -s '{action_slug:.[0].action_slug, trigger:{selector:.[0].trigger, kind:.[0].kind}, revealed_dom:.[1].revealed_dom, computed:.[1].computed, notes:null}' \
      >> "$FRAG/$SLUG.interactions.tmp.jsonl"
@@ -292,11 +290,11 @@ jq -s '{page:"{PAGE}", interactions:.}' "$FRAG/$SLUG.interactions.tmp.jsonl" > "
 jq -e '.interactions' "$FRAG/$SLUG.interactions.json" >/dev/null || echo "PARSE FAIL interactions"
 ```
 
-> The before/after node-set diff (step 1 → step 3) is how you isolate the revealed UI through `javascript_tool`. If you prefer to confirm what mounted, `mcp__claude-in-chrome__read_page` / `find` after the trigger to locate the new toolbar/menu/composer/panel, then read its `outerHTML` and `getComputedStyle` over that subtree via `javascript_tool` for `revealed_dom` + `computed` — either path yields the same schema. The sequence above is the contract — adapt the mechanics, not the steps.
+> The before/after node-set diff (step 1 → step 3) is how you isolate the revealed UI through `JavaScript evaluation capability`. If you prefer to confirm what mounted, `DOM inspection capability` / element lookup capability after the trigger to locate the new toolbar/menu/composer/panel, then read its `outerHTML` and `getComputedStyle` over that subtree via `JavaScript evaluation capability` for `revealed_dom` + `computed` — either path yields the same schema. The sequence above is the contract — adapt the mechanics, not the steps.
 
-**Evidence order is unchanged** (CSSOM authored rules > CDP forced-state computed > deduped computed archetypes > screenshot estimate): `revealed_dom` + its `getComputedStyle` reads are direct measurement of the mounted UI; the optional screenshot is the lowest-rank corroboration, never the source of a value.
+**Evidence order is unchanged** (CSSOM authored rules > driven interaction-state styles > deduped computed archetypes > screenshot estimate): `revealed_dom` + its `getComputedStyle` reads are direct measurement of the mounted UI; the optional screenshot is the lowest-rank corroboration, never the source of a value.
 
-**Anti-hallucination.** If an interaction in the map cannot be performed (trigger not found, nothing new mounts, state gated behind auth), record that entry with `revealed_dom: null`, `computed: []`, and `notes: "<reason>"` — **never invent a toolbar/menu/panel from memory.** If the whole route is unreachable / auth-walled, emit `<promise>BLOCKED: reason</promise>` (contract §6). Anything recon listed in `unreached` for this route is carried through as a `null` entry with its reason — surfaced, not silently dropped.
+**Anti-hallucination.** If an interaction in the map cannot be performed (trigger not found, nothing new mounts, state gated behind auth), record that entry with `revealed_dom: null`, `computed: []`, and `notes: "<reason>"` — **never invent a toolbar/menu/panel from memory.** If the whole route is unreachable / auth-walled, mark the stage blocked in status.json, report the reason, and stop (contract §6). Anything recon listed in `unreached` for this route is carried through as a `null` entry with its reason — surfaced, not silently dropped.
 
 ---
 
@@ -338,7 +336,7 @@ Harvest every custom property under every theme scope and resolve the **effectiv
 })()
 ```
 
-Run via `mcp__claude-in-chrome__javascript_tool`; write the returned string to `/tmp/extract-{PAGE}/vars.json`, then MERGE into shared `css-variables.json` (read-modify-write; see §9).
+Run via `JavaScript evaluation capability`; write the returned string to `/tmp/extract-{PAGE}/vars.json`, then MERGE into shared `css-variables.json` (read-modify-write; see §9).
 
 > If the site has no theme attribute hooks, `light` and `dark` will be identical — that's fine, it means single-theme. If `getPropertyValue` returns empty for all names (Tailwind utility site with no custom props), write `{"themes":{"light":{},"dark":{}},"note":"utility-class site; tokens live in computed archetypes"}` and rely on §3-A.
 
@@ -360,7 +358,7 @@ Iterate every sheet's `cssRules` (style + `@media` + `@container` + `@font-face`
 })()
 ```
 
-Run the CSSOM dump via `mcp__claude-in-chrome__javascript_tool`; write the returned string to `/tmp/extract-{PAGE}/cssom.json`. Then REFETCH every cross-origin sheet as real text with Bash `curl` (this part is not browser-tool-specific — keep it):
+Run the CSSOM dump via `JavaScript evaluation capability`; write the returned string to `/tmp/extract-{PAGE}/cssom.json`. Then REFETCH every cross-origin sheet as real text with Bash `curl` (this part is not browser-tool-specific — keep it):
 
 ```bash
 # REFETCH every cross-origin sheet as real text (do NOT stub)
@@ -400,7 +398,7 @@ Capture `@font-face` rules **and** the actually-loaded set (`Array.from(document
 })()
 ```
 
-Run the fonts capture via `mcp__claude-in-chrome__javascript_tool`; write the returned string to `/tmp/extract-{PAGE}/fonts.json`. Then download the resolved font bytes with Bash `curl` (keep — not browser-tool-specific):
+Run the fonts capture via `JavaScript evaluation capability`; write the returned string to `/tmp/extract-{PAGE}/fonts.json`. Then download the resolved font bytes with Bash `curl` (keep — not browser-tool-specific):
 
 ```bash
 # download every resolved font file as real bytes
@@ -446,7 +444,7 @@ Resolve **every** raster source (`img.currentSrc` + parsed `srcset`/`sizes`), CS
 })()
 ```
 
-Run the assets capture via `mcp__claude-in-chrome__javascript_tool`; write the returned string to `/tmp/extract-{PAGE}/assets.json`. Then download the bytes with Bash `curl` (keep — not browser-tool-specific):
+Run the assets capture via `JavaScript evaluation capability`; write the returned string to `/tmp/extract-{PAGE}/assets.json`. Then download the bytes with Bash `curl` (keep — not browser-tool-specific):
 
 ```bash
 dl() { # url -> dir ; content-hashed filename, records failures
@@ -491,27 +489,27 @@ Capture the **real** breakpoints (`@media`/`@container` `conditionText` — not 
 })()
 ```
 
-Run via `mcp__claude-in-chrome__javascript_tool`; write the returned string to `$FRAG/$SLUG.layout.json`.
+Run via `JavaScript evaluation capability`; write the returned string to `$FRAG/$SLUG.layout.json`.
 
-The `mediaConditions` array is the **measured** breakpoint set — the design-spec agent uses these, not the viewport guesses.
+The `mediaConditions` array is the **measured** breakpoint set — the design-spec stage uses these, not the viewport guesses.
 
 ---
 
 ## §3-I — Framework fingerprint (record in `recon.json`; do not duplicate if present)
 
-Recon usually writes this already. **Read `01-recon/recon.json` first** — if `frameworks` is populated, skip. Only if absent, detect and patch it (read-modify-write, §9): `__NEXT_DATA__`/`self.__next_f` (Next.js), `__remixContext` (Remix), `__NUXT__` (Nuxt), `[data-reactroot]`/React fiber keys (React), `ng-version` (Angular), `[data-v-*]` (Vue), `[data-astro-*]` (Astro); Tailwind via `--tw-*` custom props or utility-class density; asset hosts (`_next/static`, `/assets/index-*` Vite); `<meta name=generator>`.
+Recon usually writes this already. **Read `01-recon/recon.json` first** — if `framework` is populated, skip. Only if absent, detect and patch it (read-modify-write, §9): `__NEXT_DATA__`/`self.__next_f` (Next.js), `__remixContext` (Remix), `__NUXT__` (Nuxt), `[data-reactroot]`/React fiber keys (React), `ng-version` (Angular), `[data-v-*]` (Vue), `[data-astro-*]` (Astro); Tailwind via `--tw-*` custom props or utility-class density; asset hosts (`_next/static`, `/assets/index-*` Vite); `<meta name=generator>`.
 
 ```js
 (() => ({ next: !!(window.__NEXT_DATA__||self.__next_f), remix: !!window.__remixContext, nuxt: !!window.__NUXT__, react: !!document.querySelector('[data-reactroot]')||!!Object.keys(document.body||{}).find(k=>k.startsWith('__react')), angular: !!document.querySelector('[ng-version]'), vue: !!document.querySelector('*[data-v-app],*[__vue__]'), astro: !!document.querySelector('[data-astro-cid],[data-astro-source-file]'), tailwind: getComputedStyle(document.documentElement).getPropertyValue('--tw-ring-color')!=='' || /\b(flex|grid|px-\d|text-\w+-\d)\b/.test(document.body.className), generator: (document.querySelector('meta[name=generator]')||{}).content||null, assetHosts: [...new Set(Array.from(document.querySelectorAll('script[src],link[href]')).map(e=>{try{return new URL(e.src||e.href).pathname.split('/').slice(0,3).join('/')}catch(_){return null}}).filter(Boolean))].slice(0,12) }))()
 ```
 
-Run via `mcp__claude-in-chrome__javascript_tool`. Wrap the result and patch into `recon.json` only if it lacks `frameworks`.
+Run via `JavaScript evaluation capability`. Wrap the result and patch into `recon.json` only if it lacks `framework`.
 
 ---
 
 ## Also: cleaned DOM → `fragments/{slug}.dom.html`
 
-Read the full markup with `mcp__claude-in-chrome__javascript_tool` (`document.documentElement.outerHTML`) — or `mcp__claude-in-chrome__read_page` — and write the returned string to `/tmp/extract-{PAGE}/raw.html`. Then strip script bodies + inline event handlers with Bash (not browser-tool-specific), keeping structure/classes/`data-*`/inline `style`:
+Read the full markup with `JavaScript evaluation capability` (`document.documentElement.outerHTML`) — or `DOM inspection capability` — and write the returned string to `/tmp/extract-{PAGE}/raw.html`. Then strip script bodies + inline event handlers with Bash (not browser-tool-specific), keeping structure/classes/`data-*`/inline `style`:
 
 ```bash
 # strip script bodies + inline event handlers but KEEP structure, classes, data-*, inline style attrs
@@ -524,7 +522,7 @@ Keep classes, `data-*`, ARIA, and inline `style=` attributes — they're evidenc
 
 ## §9 — Shared-file merge (read-modify-write)
 
-`css-variables.json`, `all-styles.json`, `fonts.json`, `assets.json` accumulate values from **every** route. Extraction runs sequentially (one Chrome, one route at a time), so there's no concurrent writer — but you still **never blind-overwrite**: each route reads the existing shared file, folds in its partial, and writes back, so earlier routes' values are preserved. (The `mkdir` directory-lock below is harmless under sequential runs and keeps the merge robust if a run is ever parallelized; the `merge_shared` helper and `jq` merge exprs are unchanged.)
+`css-variables.json`, `all-styles.json`, `fonts.json`, `assets.json` accumulate values from **every** route. Extraction runs sequentially (one browser, one route at a time), so there's no concurrent writer — but you still **never blind-overwrite**: each route reads the existing shared file, folds in its partial, and writes back, so earlier routes' values are preserved. (The `mkdir` directory-lock below is harmless under sequential runs and is unnecessary for this sequential workflow; the `merge_shared` helper and `jq` merge exprs are unchanged.)
 
 ```bash
 merge_shared() { # $1=target shared file ; $2=this route's partial ; $3=jq merge expr
@@ -573,14 +571,14 @@ Shared (read-modify-write merge, §9):
 - [ ] `assets.json` + `assets/{img,svg}/*` bytes, full inline-SVG `outerHTML`, no placeholders (§3-G)
 - [ ] `recon.json` framework fingerprint present (§3-I)
 
-**Evidence & honesty:** every value traces to a `getComputedStyle` / CSSOM read / downloaded byte. Authoritative order **CSSOM rules > CDP forced-state computed > computed archetypes > screenshot**. Any value you cannot read → `null` + `reason`; never invent, never carry from memory. If the route is unreachable / auth-walled, emit `<promise>BLOCKED: reason</promise>`.
+**Evidence & honesty:** every value traces to a `getComputedStyle` / CSSOM read / downloaded byte. Authoritative order **CSSOM rules > driven interaction-state styles > computed archetypes > screenshot**. Any value you cannot read → `null` + `reason`; never invent, never carry from memory. If the route is unreachable / auth-walled, mark the stage blocked in status.json, report the reason, and stop.
 
-Set this task's flag in `status.json`, then end with `<promise>CONTINUE</promise>`.
+Set this stage's status in `status.json`, then end with update status.json, report the artifacts, and wait for user approval.
 
 ---
 
 ## States manifest + large-data extraction
 
-Maintain `02-extraction/STATES-MANIFEST.md`: one row per view/state from `01-recon/interaction-map.json`, with columns `screenshot` and `code extracted`. Check `code extracted` only once you've actually pulled that state's computed styles / DOM. This is your punch-list — work down it; don't stop until every row's code column is checked. The coverage critic gates on it.
+Maintain `02-extraction/STATES-MANIFEST.md`: one row per view/state from `01-recon/interaction-map.json`, with columns `screenshot available` and `code extracted`. The screenshot column is informational because screenshots are optional. Check `code extracted` only once you've actually pulled that state's computed styles / DOM. This is your punch-list — work down it; don't stop until every row's code column is checked. Use it to track interaction coverage during QA.
 
-**Large JSON / SVG extraction — beat the truncation.** `javascript_tool` results are truncated (~1.2k chars), so a big computed-style dump or full SVG markup won't come back inline. Workaround: have the page build the JSON/markup and trigger a download (a `Blob` + a synthetic `<a download>` click) — the full file lands in `~/Downloads`, then `mv` it into the workspace (e.g. `02-extraction/fragments/...`). No truncation, fully accurate. **Heads-up:** Chrome blocks *repeated* automatic downloads from a site until the user allows them — allow downloads for the target once, up front, or every download after the first silently fails.
+**Large JSON / SVG extraction.** Browser-tool responses may be truncated. Split large captures into smaller batches by artifact or section, or use a browser-supported download when available. Verify the returned file path exists and that saved JSON parses before relying on it; never assume a fixed downloads directory.

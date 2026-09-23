@@ -2,12 +2,12 @@
 
 Build is **split into two sub-stages** with a hard sequencing rule (see contract §2):
 
-- **5a — Build Foundation** runs **alone**, before any page agent. It is the **SOLE author** of the global design tokens / CSS custom properties, the layout shell, the nav, and the shared components. Nothing else writes those files.
-- **5b — Build Page** runs **in parallel, one agent per route**. Each page agent **consumes** the foundation tokens and **never redefines** them. It implements a single route to match its extracted fragment.
+- **5a — Build Foundation** runs **alone**, before any route stage. It is the **SOLE author** of the global design tokens / CSS custom properties, the layout shell, the nav, and the shared components. Nothing else writes those files.
+- **5b — Build Page** runs **sequentially, one route at a time**.
 
-You have never seen the live app. Work strictly from the artifacts below — never generate UI from memory. The mission is pixel-for-pixel ownership of the target, proven later by a measured pixel diff (contract §3 fidelity targets, §5 gate). Build to be measured, not eyeballed.
+The goal is to match the reference using measured DOM/CSS evidence and the computed-style assertions in contract §5. Screenshots are visual aids only.
 
-**Hard rule for BOTH sub-stages: `npm run build` must exit 0.** The orchestrator runs it as a regression gate after foundation, after pages, and after every fix cycle (contract §5, §6). A build that does not compile is a `HARD-BLOCKER` — emit `<promise>BLOCKED: build error — {message}</promise>` and stop. Never leave the tree in a non-compiling state.
+A build failure that cannot be resolved is a blocker: record it in status.json, report the reason, and stop.
 
 ---
 
@@ -23,7 +23,7 @@ You have never seen the live app. Work strictly from the artifacts below — nev
 | `02-extraction/assets.json` | Manifest of DOWNLOADED bytes (hash, ext, intrinsic dims, srcset) |
 | `02-extraction/assets/` | The actual downloaded files: `img/`, `svg/`, `fonts/` |
 | `02-extraction/fragments/{page}.*` | **5b only:** per-route `.computed.json`, `.pseudo.json`, `.states.json`, `.layout.json`, `.dom.html` |
-| `01-recon/screenshots/{page}--{viewport}.png` | Visual reference (the diff baseline). Open before building each page |
+Optional visual reference when the browser tool returns a file; computed styles remain the gate.
 
 Page slug rule and viewport keys are in contract §1 (`/` → `home`; viewports `desktop` 1920×1080, `tablet` 768×1024, `mobile` 375×667).
 
@@ -31,7 +31,7 @@ Page slug rule and viewport keys are in contract §1 (`/` → `home`; viewports 
 
 # Stage 5a — BUILD FOUNDATION (runs alone, sole author of global tokens)
 
-You are the **BUILD-FOUNDATION** agent. You run **before** any page agent and you are the **only** agent that writes the global token file, the layout shell, the nav, and the shared components. Page agents read what you produce. Get this exactly right — every page inherits your foundation.
+Perform the **BUILD-FOUNDATION** stage.
 
 Build in this exact order. Skipping ahead creates broken dependencies.
 
@@ -46,7 +46,7 @@ Confirm the scaffold compiles (`npm install && npm run build`) before adding any
 
 ## 5a.2 — Design tokens / CSS custom properties (THE SINGLE SOURCE OF TRUTH)
 
-Author **every** token from `DESIGN.md` as a CSS custom property in the global stylesheet (`app/globals.css` or `src/styles/globals.css`). This file is the **single source of truth** for all values. Page agents reference these variables — they never declare new ones.
+Route pages consume these variables and never declare new global tokens.
 
 ```css
 :root {
@@ -131,15 +131,15 @@ For nav and every shared component, implement `:hover`, `:focus-visible`, and `:
 npm run build   # MUST exit 0
 ```
 
-Fix all errors (warnings OK). Write `05-build/build-log.md` listing every file created with a one-line description. Set the foundation flag in `status.json`. End with `<promise>CONTINUE</promise>` (or `<promise>BLOCKED: …</promise>` if the build will not compile).
+Fix all errors (warnings OK). Write `05-build/build-log.md` listing every file created with a one-line description. Set the Stage 5a status in `status.json`. End with update status.json, report the artifacts, and wait for user approval (or mark the stage blocked in status.json, report the reason, and stop if the build will not compile).
 
 ---
 
-# Stage 5b — BUILD PAGE (runs in parallel, one agent per route)
+# Stage 5b — BUILD PAGE (one route at a time)
 
-You are a **BUILD-PAGE** agent for **ONE** route, `PAGE={PAGE}`. The foundation (tokens, layout, nav, shared components) **already exists**. Your job is to implement this single route so it matches its extracted fragment pixel-for-pixel.
+Implement one route, PAGE={PAGE}, in this stage. The shared foundation already exists; match the extracted fragment using its tokens and components.
 
-**Consume foundation tokens ONLY. Never redefine a token, never edit the global stylesheet, never touch another route's file.** If you need a value that is genuinely missing from the tokens, log it in `05-build/build-log.md` and use the closest existing token — do not add a new global var (that would race with sibling page agents and with 5a's sole-author rule).
+**Consume foundation tokens ONLY. Never redefine a token, never edit the global stylesheet, never touch another route's file.** If you need a value that is genuinely missing from the tokens, log it in `05-build/build-log.md` and use the closest existing token — do not add a new global var (that would race with sibling route stages and with 5a's sole-author rule).
 
 ## 5b.1 — Study the fragment
 
@@ -149,7 +149,7 @@ Read this route's `02-extraction/fragments/{page-slug}.*`:
 - `{page}.pseudo.json` — `::before` / `::after` / `::placeholder` / `::marker` / `::selection` content and styles.
 - `{page}.states.json` — `:hover` / `:focus` / `:active` deltas for this route's elements.
 - `{page}.layout.json` — flex/grid, real breakpoints (`@media`/`@container` conditionText), stacking contexts.
-- Open `01-recon/screenshots/{page-slug}--desktop.png` (and tablet/mobile) as the visual reference.
+- Review available `01-recon/screenshots/{page-slug}--{viewport}.png` files as optional visual references. If none were saved, use the measured DOM, computed styles, and layout artifacts.
 
 ## 5b.2 — Build the route
 
@@ -165,14 +165,7 @@ Compose the page from foundation layout + shared components, section by section,
 
 ## 5b.3 — Periodic visual check
 
-Every few sections:
-
-```bash
-$BROWSER_CMD open http://localhost:3000/{route}
-$BROWSER_CMD screenshot
-```
-
-Compare against `01-recon/screenshots/{page-slug}--{viewport}.png`. Fix obvious drift now.
+Every few sections, open the local route in the configured browser-control tool and review computed styles against extracted evidence. Use screenshots as visual references only, when the tool returns them. Fix measurable drift now.
 
 ## 5b.4 — Verify and complete (5b)
 
@@ -180,20 +173,20 @@ Compare against `01-recon/screenshots/{page-slug}--{viewport}.png`. Fix obvious 
 npm run build   # MUST exit 0
 ```
 
-The build must compile — your route cannot be the file that breaks the regression gate. Append your files to `05-build/build-log.md`, set this page's flag in `status.json`, end with `<promise>CONTINUE</promise>` (or `<promise>BLOCKED: …</promise>`).
+The build must compile — your route cannot be the file that breaks the regression gate. Append your files to `05-build/build-log.md`, set this route's status in `status.json`, end with update status.json, report the artifacts, and wait for user approval (or mark the stage blocked in status.json, report the reason, and stop).
 
 ---
 
 ## Rules (non-negotiable, BOTH sub-stages)
 
 - Match `DESIGN.md` and the fragment values **EXACTLY**. No rounding 14px→16px, no `ease` for `ease-in-out`, no 2-stop approximation of a 5-stop gradient.
-- **5a owns tokens; 5b consumes tokens.** Page agents never write the global stylesheet or `tailwind.config.ts` token map.
+- Stage 5a owns global tokens; Stage 5b route pages consume them and never write the global stylesheet or token map.
 - Fonts are **self-hosted** from `02-extraction/assets/fonts/`. No CDN, no system-font substitution.
 - Assets are the **real downloaded files**. Never picsum/pravatar/placeholder (log a genuine download failure instead).
 - Gradients come from `backgroundImage` tokens; layered/inset shadows and `backdrop-filter` reproduced verbatim.
 - Every clickable element: `cursor: pointer`. Every documented hover/focus/active state implemented, on the right property, with the right transition token.
 - Semantic HTML throughout.
-- **`npm run build` must exit 0.** The orchestrator runs it as a regression gate (contract §5, §6). Never commit a non-compiling tree.
+- **`npm run build` must exit 0.** The current Codex session runs it as a regression gate (contract §5, §6). Never commit a non-compiling tree.
 - Never leave a TODO in code — document blockers in `05-build/build-log.md`. Never invent UI from memory.
 
 ## Output
@@ -201,4 +194,4 @@ The build must compile — your route cannot be the file that breaks the regress
 - All code written into `OUTPUT_DIR` per `file-tree.md`.
 - `05-build/build-log.md` — every file created/edited + one-line description; any logged asset/token gaps.
 
-<promise>CONTINUE</promise>
+Update status.json, report the stage artifacts, and wait for user approval.

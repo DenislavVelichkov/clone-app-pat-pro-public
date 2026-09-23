@@ -3,9 +3,9 @@
 This stage runs **after** the clone has converged (contract §5 gate PASS / §6 `CONVERGED-PASS`). The pixel-perfect clone in `OUTPUT_DIR` is now a stable, on-brand base. This stage adds **net-new value on top of it**:
 
 - **Part A — Feature Build:** the user asks, in plain English, for a custom feature ("add a clean drag-and-drop Kanban board view", "add a 'catch me up' button that summarizes recent changes"). Build it INTO the existing clone, in the clone's exact look, with the same QA discipline.
-- **Part B — Agent Access:** the high-value finale. Stand up **REST endpoints** for the app's core entities plus an **MCP server** that wraps them, so any AI agent (Claude, GPT, Gemini) can operate the cloned app. The point of cloning a CRM / PM / support tool is to hand your agent the keys to it.
+- **Part B — Agent Access:** the high-value finale. Stand up **REST endpoints** for the app's core entities plus an **MCP server** that wraps them, so an MCP-capable client can operate the cloned app. The point of cloning a CRM / PM / support tool is to hand your agent the keys to it.
 
-Both sub-stages are strict, separately system-prompted agents per contract §7 (ROLE / INPUTS / TASK / OUTPUTS / EVIDENCE / ANTI-HALLUCINATION / COMPLETION). Both obey the build conventions in `05-build.md`: **consume tokens, never redefine them**, self-host assets, semantic HTML, and **`npm run build` must exit 0** — a non-compiling tree is a `HARD-BLOCKER` (emit `<promise>BLOCKED: build error — {message}</promise>`).
+Use the contract §7 checklist (ROLE / INPUTS / TASK / OUTPUTS / EVIDENCE / ANTI-HALLUCINATION / COMPLETION) for both sub-stages. Both obey the build conventions in `05-build.md`: **consume tokens, never redefine them**, self-host assets, semantic HTML, and **`npm run build` must exit 0** — a non-compiling tree is a `HARD-BLOCKER` (mark the stage blocked in status.json, report the reason, and stop).
 
 You have never seen the live target. You DO have the converged clone, its code, and `DESIGN.md`. Work strictly from those artifacts — never generate UI from memory; build in the clone's design language so additions look native, not bolted on.
 
@@ -21,7 +21,6 @@ clone-workspace/{name}/
     ├── features/
     │   ├── {feature-slug}.spec.md         # what was asked + what was built (per feature)
     │   ├── {feature-slug}.qa.json         # token-assertion + self-check result for the feature (Part A)
-    │   └── feature-screenshots/{feature-slug}--{viewport}.png
     ├── api/
     │   ├── entities.json                   # inferred core entities + fields + relations (Part B.1)
     │   ├── api-map.md                       # every route: method, path, req/res shape, auth
@@ -35,19 +34,19 @@ clone-workspace/{name}/
 - **Part A:** new components/routes/state wired into the existing app.
 - **Part B:** API route handlers (`app/api/**` for Next, `server/` for Express) + a self-contained `mcp-server/` directory.
 
-This is a **loop**. After each feature in Part A the orchestrator checks back in with the user and asks for the next one. Part B typically runs once the feature set is settled (or on demand). Each agent run ends with `<promise>CONTINUE</promise>`.
+This is a **loop**. After each feature in Part A the current Codex session checks back in with the user and asks for the next one. Part B typically runs once the feature set is settled (or on demand). Each stage ends with update status.json, report the artifacts, and wait for user approval.
 
 ---
 
-# Part A — FEATURE BUILD agent
+# Part A — FEATURE BUILD
 
-**ROLE** — You are the FEATURE-BUILD agent in a pixel-perfect cloning pipeline. The clone is already built and converged; you add ONE user-requested feature into it so it looks and behaves as if it shipped with the original.
+**ROLE** — Perform the FEATURE-BUILD stage in the cloning workflow. The clone is already built and converged; you add ONE user-requested feature into it so it looks and behaves as if it shipped with the original.
 
 **INPUTS** — read ALL before writing a line of code:
 
 | File | What it gives you |
 |------|-------------------|
-| `$FEATURE_REQUEST` | The plain-English ask (passed in by the orchestrator), e.g. "add a drag-and-drop Kanban board view" |
+| `$FEATURE_REQUEST` | The plain-English ask (passed in by the current Codex session), e.g. "add a drag-and-drop Kanban board view" |
 | `OUTPUT_DIR/` | The converged clone — its existing components, routes, state, and stack |
 | `03-design-spec/DESIGN.md` | Authoritative tokens: colors, **Gradients table**, typography (+ variable-font axes), spacing scale, radius scale, layered/inset shadows, **Effects/backdrop-filter**, motion (durations/easings/keyframes), states (hover/focus/active), measured breakpoints, light/dark theme tokens, **Design Guardrails**, **Agent Prompt Guide** |
 | `04-architecture/component-map.md` | The component hierarchy you must extend / reuse |
@@ -82,13 +81,11 @@ Build the feature out of components that already exist in `OUTPUT_DIR` (the Butt
 ### A.4 — Wire it into the app
 A feature that isn't reachable isn't done. Add it to the app's real surfaces: a **route** (router + any nav/sidebar entry), a **nav/toolbar control** (a button using the existing Button component + `cursor: pointer` + the documented hover/focus/active states from `DESIGN.md`), and the **state** it needs (reuse the app's existing state pattern — the same store/context/hooks the clone already uses; do not introduce a second state library). For a "catch me up" style button, wire the trigger and a result surface (panel/modal/toast built from existing components); the *content* can come from mock data or, if Part B's API already exists, from a real fetch.
 
-### A.5 — QA the feature (token assertion + visual self-check)
-There is **no original to pixel-diff against** — this feature does not exist in the target. So replace the §5 pixel gate with two checks the feature must pass:
+### A.5 — QA the feature
 
-1. **Token assertion (assert-styles style, per contract §5).** Screenshot the feature, then for its key selectors read computed `color / backgroundColor / backgroundImage / fontFamily / fontSize / fontWeight / letterSpacing / lineHeight / borderRadius / boxShadow / cursor / transition` and assert each value **is a `DESIGN.md` token** (colors normalized to `rgb()`, numerics ±1px / ±0.01em). Any value that is not a token is off-brand → fix it. Write results to `08-extend/features/{feature-slug}.qa.json`.
-2. **Visual native-check.** Capture `08-extend/features/feature-screenshots/{feature-slug}--{viewport}.png` at desktop/tablet/mobile (use the measured breakpoints). Open it beside an existing app screenshot from `01-recon/screenshots/` and confirm it reads as the same product — same density, same accent discipline, same corner/shadow softness, same motion. State the evidence (the token values you read), not an opinion.
+There is no original reference for a new feature. Check that its computed styles use DESIGN.md tokens, then exercise its interactions and confirm they work.
 
-Drive the feature's own interactions (drag a card, click the button, open the panel) and confirm they behave — analogous to the interaction coverage in contract §8.
+Record selectors, computed values, token comparisons, interaction results, and remaining gaps in the feature QA file. Screenshots are optional visual references; save them only when the browser tool returns actual files.
 
 ### A.6 — Keep the build green
 ```bash
@@ -100,20 +97,20 @@ Fix all errors (warnings OK). The clone was compiling before you started; it mus
 - Feature code in `OUTPUT_DIR` (components/route/state, wired into nav/router).
 - `08-extend/features/{feature-slug}.spec.md` — ask + what was built + any logged token gap.
 - `08-extend/features/{feature-slug}.qa.json` — token-assertion + self-check result.
-- `08-extend/features/feature-screenshots/{feature-slug}--{viewport}.png`.
+- Optional feature screenshots only when the browser tool returns actual files.
 - Append created/edited files to `05-build/build-log.md`.
 
 **EVIDENCE RULES** — every "it matches the app" claim is backed by a measured value: the computed property you read equals a `DESIGN.md` token. Never assert native-ness from an opinion. Authoritative source order is `DESIGN.md` tokens > the clone's existing component styles > screenshot estimate.
 
-**ANTI-HALLUCINATION** — never invent a design value; pull from tokens or reuse an existing component's value. Never introduce off-brand colors/fonts/shadows. Never duplicate a component that already exists — extend/compose it. If the request can't be satisfied without backend logic that doesn't exist yet, build the UI against mock data and note the dependency (or defer to Part B); do not fake a working backend. If the build won't compile, emit `<promise>BLOCKED: build error — {message}</promise>`.
+**ANTI-HALLUCINATION** — never invent a design value; pull from tokens or reuse an existing component's value. Never introduce off-brand colors/fonts/shadows. Never duplicate a component that already exists — extend/compose it. If the request can't be satisfied without backend logic that doesn't exist yet, build the UI against mock data and note the dependency (or defer to Part B); do not fake a working backend. If the build won't compile, mark the stage blocked in status.json, report the reason, and stop.
 
-**COMPLETION** — write outputs, append to `build-log.md`, set this feature's flag in `status.json`. The orchestrator then **checks in with the user and asks for the next feature** (this is the loop). End with `<promise>CONTINUE</promise>` (or `<promise>BLOCKED: …</promise>`).
+**COMPLETION** — write outputs, append to `build-log.md`, set this feature's flag in `status.json`. The current Codex session then **checks in with the user and asks for the next feature** (this is the loop). End with update status.json, report the artifacts, and wait for user approval (or mark the stage blocked in status.json, report the reason, and stop).
 
 ---
 
-# Part B — AGENT ACCESS agent (REST API + MCP server)
+# Part B — AGENT ACCESS (REST API + MCP server)
 
-**ROLE** — You are the AGENT-ACCESS agent in a pixel-perfect cloning pipeline. You make the cloned app operable by an AI agent: you build REST endpoints for its core entities and an MCP server that wraps them as tools, so Claude / GPT / Gemini can list, read, create, and update the app's data programmatically.
+**ROLE** — Perform the AGENT-ACCESS stage in the cloning workflow. You make the cloned app operable by an AI agent: you build REST endpoints for its core entities and an MCP server that wraps them as tools, so an MCP-capable client can list, read, create, and update the app's data programmatically.
 
 **The genuine value, in one line:** the payoff of cloning a CRM / PM / support / docs tool is handing your own agent a way to *operate* it — read the board, file an item, update a status — instead of you clicking.
 
@@ -123,7 +120,7 @@ Fix all errors (warnings OK). The clone was compiling before you started; it mus
 |------|-------------------|
 | `OUTPUT_DIR/` | The converged clone — its existing data shapes / mock data / any store it already uses |
 | `04-architecture/component-map.md` + `file-tree.md` | What the app is made of (entities surface here) |
-| `02-extraction/fragments/*.dom.html` + recon screenshots | The real UI — read it to **infer the core entities** the app manages |
+| `02-extraction/fragments/*.dom.html` and available recon screenshots | The real UI — use the DOM as the source and screenshots only as optional context to **infer the core entities** the app manages |
 | `recon.json` | Stack fingerprint — decides Next.js route handlers vs Express |
 | `03-design-spec/DESIGN.md` | (Reference only — no UI is built here) |
 | `08-extend/features/*` | Any feature data shapes already introduced in Part A |
@@ -201,7 +198,7 @@ export default r;
 ```
 Generate this set **per entity** from `entities.json` (loop the entities — don't hand-write five near-identical files if one factory covers them). Record every route in `08-extend/api/api-map.md` (method, path, req/res shape, which entity).
 
-**Auth-token gating (note + implement as a simple gate).** All `/api/*` routes check a bearer token: read `process.env.APP_API_TOKEN`; if set, require `Authorization: Bearer <token>` and return `401 { error: "Unauthorized" }` otherwise. `lib/api-auth.ts` (`requireToken`) for Next, an Express middleware for Express. Document in `api-map.md` that the token is set via env and passed by every caller (the same Bearer pattern agents already use). Default: gate ON if `APP_API_TOKEN` is present, open for local dev if it isn't — state which in the map.
+**Auth-token gating (note + implement as a simple gate).** All `/api/*` routes check a bearer token: read `process.env.APP_API_TOKEN`; if set, require `Authorization: Bearer <token>` and return `401 { error: "Unauthorized" }` otherwise. `lib/api-auth.ts` (`requireToken`) for Next, an Express middleware for Express. Document in `api-map.md` that the token is set via env and passed by every caller (the standard Bearer-token pattern). Default: gate ON if `APP_API_TOKEN` is present, open for local dev if it isn't — state which in the map.
 
 ### B.4 — Smoke-test the API
 With the dev server running, curl each route once (list, get, create, update, delete) and record status + a response sample in `08-extend/api/api-smoke.json`. A create must round-trip (POST then GET the new id). If a route 500s, fix it before moving on.
@@ -214,7 +211,7 @@ mcp-server/
 ├── package.json        # bin: "app-mcp", deps: @modelcontextprotocol/sdk, zod
 ├── src/index.ts        # server bootstrap + stdio transport
 ├── src/tools.ts        # tool defs generated from entities.json
-└── README.md           # how to register it with an agent
+└── README.md           # how to register it with an MCP client
 ```
 
 ```ts
@@ -286,25 +283,15 @@ Rules for the MCP layer:
 - **Input schemas** are zod schemas mirroring each endpoint's request body / query. Required vs optional matches the API.
 - **Tool descriptions** are written for an LLM to choose correctly ("List issues, optionally filtered by status…"), with the entity names this app actually uses.
 - **Auth** flows through: the MCP server forwards `APP_API_TOKEN` as the same Bearer header the API gates on.
-- **Errors** surface as `isError: true` with the API's error envelope text so the calling agent can react.
+- **Errors** surface as `isError: true` with the API's error envelope text so the calling client can react.
 
 Record each tool ↔ endpoint mapping in `08-extend/mcp/tools-map.md`.
 
 ### B.6 — How a user points their agent at it
-Put this in `mcp-server/README.md` (concrete, agnostic): run the app (`npm run dev` in `OUTPUT_DIR`), set `APP_API_BASE` + `APP_API_TOKEN`, then register the stdio server with any MCP client. Example for Claude Desktop / Claude Code (`mcpServers` block):
+Document the configuration format required by the MCP client the user chooses; do not assume a vendor-specific config file.
 
-```jsonc
-{
-  "mcpServers": {
-    "app-mcp": {
-      "command": "node",
-      "args": ["/abs/path/OUTPUT_DIR/mcp-server/dist/index.js"],
-      "env": { "APP_API_BASE": "http://localhost:3000/api", "APP_API_TOKEN": "…" }
-    }
-  }
-}
-```
-Note that the same stdio server works for any MCP-capable agent (Claude, GPT via an MCP bridge, Gemini, Cursor, etc.) — the tools, not the model, are the contract. One line on the payoff: now the agent can operate the app (read the board, file an item, change a status) instead of the human clicking.
+
+The stdio server can work with any compatible MCP client; the tool schemas are the contract. One line on the payoff: now the agent can operate the app (read the board, file an item, change a status) instead of the human clicking.
 
 ### B.7 — Smoke-test the MCP server
 Start the MCP server and exercise it over stdio: `tools/list` returns every tool, and one `tools/call` (e.g. `create_issue`) round-trips through the API into the store and back. Record results in `08-extend/mcp/mcp-smoke.json`. Then:
@@ -322,9 +309,9 @@ npm run build   # OUTPUT_DIR — MUST exit 0
 
 **EVIDENCE RULES** — entities and fields are inferred from the **actual** cloned UI/mock data (cite where each entity surfaces in `entities.json`), never from assumptions about what the app "probably" has. Every endpoint and tool is proven by a recorded smoke-test result, not asserted. The MCP tool set maps 1:1 to the API map — any mismatch is a bug.
 
-**ANTI-HALLUCINATION** — do NOT hardcode "Linear" or any specific product's schema; derive entities from this clone. Never invent fields the UI doesn't show (record `null` + why instead). Never give the MCP server its own logic that bypasses the API. Never claim functional persistence the store doesn't actually provide. If the clone has no inferable entities (e.g. a purely static marketing page), say so in `entities.json` and emit `<promise>BLOCKED: no operable entities — clone is static</promise>` rather than fabricating a data model. If the build won't compile, emit `<promise>BLOCKED: build error — {message}</promise>`.
+**ANTI-HALLUCINATION** — do NOT hardcode "Linear" or any specific product's schema; derive entities from this clone. Never invent fields the UI doesn't show (record `null` + why instead). Never give the MCP server its own logic that bypasses the API. Never claim functional persistence the store doesn't actually provide. If the clone has no inferable entities (e.g. a purely static marketing page), say so in `entities.json` and mark the stage blocked in status.json, report the reason, and stop rather than fabricating a data model. If the build won't compile, mark the stage blocked in status.json, report the reason, and stop.
 
-**COMPLETION** — write all outputs, append to `build-log.md`, set the agent-access flag in `status.json`, end with `<promise>CONTINUE</promise>` (or `<promise>BLOCKED: …</promise>`).
+**COMPLETION** — write all outputs, append to `build-log.md`, set the agent-access flag in `status.json`, end with update status.json, report the artifacts, and wait for user approval (or mark the stage blocked in status.json, report the reason, and stop).
 
 ---
 
@@ -339,4 +326,4 @@ npm run build   # OUTPUT_DIR — MUST exit 0
 - **Honesty about scope** (contract §8): an API + MCP over a JSON/SQLite store is **functional within this clone's own data** — say that plainly; do not present it as integrated with the original product's real backend.
 - Never invent UI from memory; never leave a TODO in code — log gaps in `08-extend/...` or `05-build/build-log.md`.
 
-<promise>CONTINUE</promise>
+mark the stage complete in status.json and report its artifacts

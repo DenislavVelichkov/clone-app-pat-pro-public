@@ -1,8 +1,8 @@
-# Stage 3: Design Spec Agent Reference
+# Stage 3: Design Spec Reference
 
-> Obeys `00-contract.md`. Where this file and the contract disagree, **the contract wins** (§4 design system, §1 paths, §5 the gate). This stage is the **single author** of the design system — it runs ALONE (fan-in) after every extraction fragment exists. No other agent writes tokens.
+This stage is the only writer of the design tokens.
 
-**ROLE** — You are the Design Spec agent in a pixel-perfect cloning pipeline. You read everything under `02-extraction/`, infer ONE token system by **usage frequency + confidence**, and emit two files. You do **not** browse, do **not** capture screenshots, do **not** write code. You only read JSON/HTML artifacts and write Markdown + JSON.
+**ROLE** — Perform the Design Spec stage
 
 ---
 
@@ -14,7 +14,7 @@ Read ALL of these before writing a single line. Missing any source produces an i
 |------|------------------|------------------|
 | `02-extraction/fragments/{page}.computed.json` | Deduped computed-style **archetypes**, each with a `count`, sample selector, and `getBoundingClientRect` | The frequency signal — rank tokens by `count` summed across pages |
 | `02-extraction/fragments/{page}.pseudo.json` | `::before/::after/::placeholder/::marker/::selection/::first-letter/::first-line/::backdrop` | Gradient text, overlay glyphs, selection color, custom markers |
-| `02-extraction/fragments/{page}.states.json` | Forced `:hover/:focus/:focus-visible/:active` **deltas** (CDP) | States section deltas |
+| 02-extraction/fragments/{page}.states.json | Driven hover/focus/active style deltas | Interaction-state token evidence |
 | `02-extraction/fragments/{page}.layout.json` | flex/grid, stacking contexts, **real `@media`/`@container` `conditionText`**, per-archetype rects | Measured breakpoints + layout patterns |
 | `02-extraction/fragments/{page}.dom.html` | Cleaned `outerHTML` | Resolve which selectors actually exist (for assertions.json) and inline-SVG icon source |
 | `02-extraction/css-variables.json` | `{ "themes": { "light": {...}, "dark": {...} } }` — resolved var union per theme | Theme tokens; original var names |
@@ -32,7 +32,7 @@ When two artifacts disagree about a value, take the higher one and **cite which 
 
 ```
 1. CSSOM authored rule        (all-styles.json)         ← highest authority
-2. forced-state computed      ({page}.states.json)      ← only for :hover/:focus/:active
+2. driven interaction-state styles      ({page}.states.json)      ← only for :hover/:focus/:active
 3. computed archetype         ({page}.computed.json)    ← the rendered ground truth for static props
 4. screenshot estimate        (N/A here — mark ~ only if truly nothing else exists)
 ```
@@ -62,7 +62,7 @@ Tag every token with a confidence so Build and the gate know what to trust:
 | **med** | computed value, single route, moderate count |
 | **low** | inferred/estimated; mark the value with a leading `~` |
 
-Never leave a value blank. If nothing supports it, write `~` + best estimate and confidence `low`.
+Do not leave token cells blank. If the only evidence is a visual estimate, mark the value with `~`, label it `low`, and cite the screenshot. If no evidence exists, write `unknown (not measured)`, explain why, and omit it from `assertions.json`.
 
 ---
 
@@ -329,29 +329,28 @@ You are building a new page/component in **{App Name}**'s design language. Use O
 
 ## 5. Output File 2 — `03-design-spec/assertions.json`
 
-This is the **style-assertion half of the gate** (contract §5). `scripts/assert-styles.mjs` loads this array, opens the built clone, and for each entry runs `getComputedStyle(document.querySelector(selector))[camelCaseProp]` and compares to `expected` (colors normalized to `rgb()`; numerics ±1px / ±0.01em). **Any mismatch fails the gate** — so every entry must be both *real* (selector exists in the built clone) and *measurable* (prop is one `getComputedStyle` returns concretely).
+This is the style-assertion half of the gate (contract §5). The current Codex session captures computed styles in the browser and scripts/assert-styles.mjs compares that JSON with this array. Scope each assertion to its route and viewport so responsive values are checked against the right reference. Any mismatch fails the gate; every selector must exist in the built clone and every property must be returned by getComputedStyle.
 
-### 5.1 Shape (exactly this — consumed verbatim)
+### 5.1 Shape
 
-```json
+Use one assertion per measured selector/property/route/viewport combination:
+
+~~~json
 [
-  { "selector": ".btn-primary", "prop": "backgroundImage", "expected": "linear-gradient(135deg, rgb(99,102,241) 0%, rgb(139,92,246) 100%)" },
-  { "selector": ".btn-primary", "prop": "color", "expected": "rgb(255,255,255)" },
-  { "selector": ".btn-primary", "prop": "cursor", "expected": "pointer" },
-  { "selector": "h1", "prop": "fontSize", "expected": "64px" },
-  { "selector": "h1", "prop": "fontWeight", "expected": "800" },
-  { "selector": ".card", "prop": "borderRadius", "expected": "16px" },
-  { "selector": ".card", "prop": "boxShadow", "expected": "rgba(0, 0, 0, 0.12) 0px 1px 3px 0px, rgba(0, 0, 0, 0.24) 0px 1px 2px 0px" },
-  { "selector": "body", "prop": "backgroundColor", "expected": "rgb(255,255,255)" }
+  { "page": "/", "viewport": "desktop", "selector": ".btn-primary", "prop": "backgroundImage", "expected": "linear-gradient(135deg, rgb(99, 102, 241) 0%, rgb(139, 92, 246) 100%)" },
+  { "page": "/", "viewport": "desktop", "selector": ".btn-primary", "prop": "color", "expected": "rgb(255, 255, 255)" },
+  { "page": "/", "viewport": "mobile", "selector": ".hero-title", "prop": "fontSize", "expected": "36px" },
+  { "page": "/pricing", "viewport": "desktop", "selector": ".pricing-card", "prop": "borderRadius", "expected": "16px" }
 ]
-```
+~~~
 
-Each object has EXACTLY three keys: `selector`, `prop`, `expected`. No comments, no extra keys — `assert-styles.mjs` reads them positionally.
+Each object has exactly five keys: page, viewport, selector, prop, and expected. Page is the route path from sitemap.json; viewport is one of the configured viewport keys. The assertion script also accepts older unscoped entries for backward compatibility.
 
 ### 5.2 How to pick **selectors** that exist in the built clone
 - Prefer **stable, structural selectors** that the architecture/build will reproduce: element tags (`body`, `h1`, `h2`, `a`), and the semantic class names you saw in `{page}.dom.html` that Build is told to keep (e.g. `.btn-primary`, `.card`, `.nav`). Read `{page}.dom.html` to confirm the class/tag actually appears.
 - **Avoid** framework-hashed classes (`.css-1ab2c3`, `._next_xyz`, Tailwind atomic stacks) — the clone won't reproduce those exact names. If the original only has hashed classes, assert on the **tag or role** instead (`button`, `nav a`, `header`).
 - Use selectors that resolve to **exactly one well-defined archetype** so the computed value is unambiguous. One representative element per token.
+- Include the route and viewport for every assertion. Use route-specific selectors when the same class has different styling on different pages.
 - Keep the list to the **highest-signal tokens** (~20–60 entries), not every value. Cover: key brand colors (bg, text-primary, accent), primary/secondary **button gradient via `backgroundImage`**, headline + body `fontSize`/`fontWeight`, the base + card `borderRadius`, the card `boxShadow`, and the primary interactive `cursor: pointer`.
 
 ### 5.3 How to pick **props** `getComputedStyle` returns concretely
@@ -371,7 +370,7 @@ Use the camelCase property names the gate already checks (contract §5): `color`
 - Never invent a value. If a value cannot be read from any artifact, write `~` + estimate, set confidence `low`, and note "no artifact — estimated."
 - Do not editorialize, do not recommend. This is a specification, not advice.
 - Do not invent components or tokens not present in the extraction data.
-- If `02-extraction/` is empty or unreadable (extraction never ran), do not fabricate a design system — emit `<promise>BLOCKED: 02-extraction artifacts missing</promise>` and stop.
+- If extraction is empty or unreadable, do not fabricate a design system; mark the stage blocked in status.json, report the reason, and stop.
 
 ---
 
@@ -380,7 +379,7 @@ Use the camelCase property names the gate already checks (contract §5): `color`
 Write EXACTLY these two files, nothing else:
 
 - `03-design-spec/DESIGN.md` — the portable best-practice design file (§4): opens with **Visual Theme** (§4.0), then all twelve mandatory token sections (§4.1–4.12) filled with no blank cells, hex+rgb for every color, units on every numeric, evidence on every row, and closes with **Design Guardrails** (§4.13) + **Agent Prompt Guide** (§4.14). Self-contained — readable in another repo with no access to `02-extraction/`.
-- `03-design-spec/assertions.json` — valid JSON array of `{selector, prop, expected}` objects covering the highest-signal tokens (§5).
+- 03-design-spec/assertions.json — valid JSON array with page, viewport, selector, prop, and expected fields covering the highest-signal tokens (§5).
 
 ### Completion checklist
 - [ ] Read ALL of `02-extraction/` (every fragment + the 4 shared files) before writing.
@@ -394,6 +393,6 @@ Write EXACTLY these two files, nothing else:
 - [ ] Assets reference only downloaded paths from `assets.json`.
 - [ ] Theme tokens keep original variable names; light + dark both filled.
 - [ ] `assertions.json` selectors exist in `{page}.dom.html` (no hashed classes); props are `getComputedStyle`-returnable; button gradients assert `backgroundImage` in computed rgb serialization.
-- [ ] Set this task's flag in `status.json`.
+- [ ] Set this stage's status in `status.json`.
 
-End with `<promise>CONTINUE</promise>` (or `<promise>BLOCKED: reason</promise>` if extraction artifacts are missing).
+End by updating status.json, reporting artifacts, and waiting for user approval (or mark the stage blocked if extraction artifacts are missing).
