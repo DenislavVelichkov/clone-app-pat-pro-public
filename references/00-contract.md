@@ -134,9 +134,9 @@ Structure: it **opens** with a **Visual Theme** paragraph (the overall feel/atmo
 Verification is measured, never eyeballed — the measurement is **computed styles, not a screenshot comparison**. For each QA cycle:
 
 1. The current Codex agent opens the running clone in the configured browser and reads each asserted selector's computed styles (`getComputedStyle`) → writes `06-qa/cycle-N/clone-styles.json`.
-2. Run, via Bash:
+2. Run from `clone-workspace/{name}/`, replacing `<skill-dir>` with the directory containing `SKILL.md`:
    ```bash
-   node scripts/assert-styles.mjs \
+   node "<skill-dir>/scripts/assert-styles.mjs" \
      --assertions 03-design-spec/assertions.json \
      --clone-styles 06-qa/cycle-N/clone-styles.json \
      --out 06-qa/cycle-N/metrics.json

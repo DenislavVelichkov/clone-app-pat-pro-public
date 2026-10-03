@@ -9,6 +9,8 @@ metadata:
 
 Recreate a web app from a live URL using measured browser evidence, real assets, and a computed-style verification loop.
 
+Resolve `<skill-dir>` to the directory containing this `SKILL.md`. Bundled script paths are relative to that directory; artifact paths are relative to `clone-workspace/{name}/`.
+
 ## Use When
 
 - The user asks to clone, copy, recreate, or replicate a website or web app from a URL.
