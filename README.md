@@ -20,10 +20,6 @@ The Codex session needs a browser-control tool that can navigate, evaluate JavaS
 
 Screenshots are visual aids. The gate uses DOM/CSSOM and `getComputedStyle` values, compared by `scripts/assert-styles.mjs`.
 
-## Use in the dv8-codex plugin
-
-This fork stays a separate Git repository and is mounted in `dv8-codex` as a Git submodule under `custom/skills/design/clone-app-pat-pro-public`. The parent plugin exposes its selected skills through `custom/.codex-plugin/plugin.json`. Update this repository first, then advance the parent repository’s submodule pointer.
-
 After the plugin is installed or refreshed, invoke it explicitly with:
 
 ```text
