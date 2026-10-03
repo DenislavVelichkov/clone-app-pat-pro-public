@@ -1,4 +1,4 @@
 interface:
-  display_name: "Clone App- Pat Pro"
+  display_name: "Clone App Pat Pro"
 policy:
   allow_implicit_invocation: true
