@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <title>Clone App Pat Pro</title>
+  <rect width="128" height="128" rx="28" fill="#172554"/>
+  <rect x="24" y="24" width="62" height="54" rx="8" fill="#172554" stroke="#93C5FD" stroke-width="4"/>
+  <path d="M26 40h58" stroke="#93C5FD" stroke-width="4"/>
+  <rect x="42" y="50" width="62" height="54" rx="8" fill="#1D4ED8" stroke="#FFFFFF" stroke-width="4"/>
+  <path d="M44 66h58M56 80h34M56 90h22" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round"/>
+</svg>

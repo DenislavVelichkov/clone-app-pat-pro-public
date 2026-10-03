@@ -1,0 +1,35 @@
+{
+  "name": "clone-app-pat-pro",
+  "version": "1.0.0",
+  "description": "Rebuild websites and web apps from live references using measured DOM and CSS, real assets, and computed-style checks.",
+  "author": {
+    "name": "DenislavVelichkov",
+    "url": "https://github.com/DenislavVelichkov"
+  },
+  "homepage": "https://github.com/DenislavVelichkov/clone-app-pat-pro-public",
+  "repository": "https://github.com/DenislavVelichkov/clone-app-pat-pro-public",
+  "keywords": [
+    "web-development",
+    "website-cloning",
+    "design-systems",
+    "ui-validation"
+  ],
+  "skills": "./skills/clone-app-pat-pro/",
+  "interface": {
+    "displayName": "Clone App Pat Pro",
+    "shortDescription": "Rebuild apps from live URLs",
+    "longDescription": "Rebuild a website or web app from a live URL by measuring its DOM and CSS, collecting assets and fonts, and checking the clone with computed-style assertions. The workflow needs browser control and pauses for review after each stage.",
+    "developerName": "DenislavVelichkov",
+    "category": "Developer Tools",
+    "capabilities": [
+      "Instructions"
+    ],
+    "websiteURL": "https://github.com/DenislavVelichkov/clone-app-pat-pro-public",
+    "defaultPrompt": [
+      "$clone-app-pat-pro:clone-app-pat-pro Clone https://example.com into ./my-clone."
+    ],
+    "brandColor": "#1D4ED8",
+    "composerIcon": "./assets/icon.svg",
+    "logo": "./assets/icon.svg"
+  }
+}
