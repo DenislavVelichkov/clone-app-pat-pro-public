@@ -1,0 +1,19 @@
+{
+  "name": "clone-app-pat-pro",
+  "displayName": "Clone App Pat Pro",
+  "version": "1.0.0",
+  "description": "Rebuild websites and web apps from live references using the Claude Chrome extension, measured DOM and CSS, and computed-style checks.",
+  "author": {
+    "name": "DenislavVelichkov",
+    "url": "https://github.com/DenislavVelichkov"
+  },
+  "homepage": "https://github.com/DenislavVelichkov/clone-app-pat-pro-public",
+  "repository": "https://github.com/DenislavVelichkov/clone-app-pat-pro-public",
+  "keywords": [
+    "web-development",
+    "website-cloning",
+    "design-systems",
+    "ui-validation"
+  ],
+  "skills": "./"
+}
