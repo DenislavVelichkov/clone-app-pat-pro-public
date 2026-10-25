@@ -125,8 +125,12 @@ test("alpha rounds to 2 decimals and opaque rgba is rgb", () => {
 
 test("url fragment ids are not read as hex colors", () => {
   const r = run(
-    [{ selector: ".a", prop: "clipPath", expected: 'url("#fade")' }],
-    { ".a": { clipPath: 'url("#ffaaddee")' } },
+    [
+      { selector: ".a", prop: "clipPath", expected: 'url("#fade")' },
+      { selector: ".a", prop: "mask", expected: "url(a.svg#abc)" },
+    ],
+    { ".a": { clipPath: 'url("#ffaaddee")', mask: "url(a.svg#aabbcc)" } },
   );
   assert.equal(r.status, 1);
+  assert.equal(r.block.failed, 2);
 });

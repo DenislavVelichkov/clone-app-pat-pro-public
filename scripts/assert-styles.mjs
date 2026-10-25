@@ -47,7 +47,7 @@ const hexToRgb = (_, h) => {
 const norm = (s) =>
   String(s ?? "").replace(/\s+/g, " ").trim().toLowerCase()
     .replace(/\s*,\s*/g, ",").replace(/\(\s+|\s+\)/g, (m) => m.trim())
-    .replace(/(?<!url\(["']?)#([0-9a-f]{8}|[0-9a-f]{6}|[0-9a-f]{3,4})\b/g, hexToRgb)
+    .replace(/(?<![^\s,(])(?<!url\(["']?)#([0-9a-f]{8}|[0-9a-f]{6}|[0-9a-f]{3,4})\b/g, hexToRgb)
     .replace(/rgba\((\d+),(\d+),(\d+),([\d.]+)\)/g, (_, r, g, b, a) => rgb(r, g, b, a));
 const scalar = (s) => {
   const match = String(s ?? "").trim().match(/^(-?(?:\d+\.?\d*|\.\d+))(px|em|rem|%)?$/i);
