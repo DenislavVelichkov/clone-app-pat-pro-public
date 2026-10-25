@@ -9,7 +9,7 @@ allowed-tools: Bash, Read, Write, Edit, Agent
 
 Mission: **own the target, pixel for pixel.** Read every value off the live page (never a screenshot guess), rebuild it, prove the match with measured computed-style assertions, then make it yours.
 
-Skill directory: `${CLAUDE_SKILL_DIR}`. Wherever a reference says `<skill-dir>`, use this path. Bundled script paths are relative to it; artifact paths are relative to `clone-workspace/{name}/`, so scripts run from any directory as `node "<skill-dir>/scripts/assert-styles.mjs" ...`. Replace `<skill-dir>` with this path in every Task sub-agent prompt before you spawn one ([`references/stage-prompts.md`](references/stage-prompts.md)).
+Skill directory: `${CLAUDE_SKILL_DIR}`. Wherever a reference says `<skill-dir>`, use this path. Bundled script paths are relative to it; artifact paths are relative to `clone-workspace/{name}/`, so scripts run from any directory as `node "<skill-dir>/scripts/assert-styles.mjs" ...`. Replace `<skill-dir>` with this path in every Task sub-agent prompt and its appended references before you spawn one ([`references/stage-prompts.md`](references/stage-prompts.md)).
 
 > **The contract is law.** [`references/00-contract.md`](references/00-contract.md) defines the workspace layout, exact artifact filenames, stage I/O, the verification gate, the convergence loop, and the agent-prompt standard. Read it first.
 

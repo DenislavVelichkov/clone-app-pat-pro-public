@@ -67,7 +67,7 @@ const cs = getComputedStyle(el);
 
 ### Step C — Fix and re-verify
 
-Apply minimal, targeted property fixes to the page code for `{PAGE}` (no refactors, no new components, no shared-file edits). After each fix, reload the route with `mcp__claude-in-chrome__navigate`, re-read the affected element's computed style via `mcp__claude-in-chrome__javascript_tool`, overwrite those values in the `{PAGE}` → `desktop` branch of your Step B copy, then re-run the Step B command. If a fix does not reduce the residual delta — or makes the computed values diverge further from the spec — revert it.
+Apply minimal, targeted property fixes to the page code for `{PAGE}` (no refactors, no new components, no shared-file edits). After each fix, reload the route with `mcp__claude-in-chrome__navigate` and repeat Step B from the re-read (keep the same copy), so values the fix changed elsewhere on the page are checked too. If a fix does not reduce the residual delta — or makes the computed values diverge further from the spec — revert it.
 
 ---
 
