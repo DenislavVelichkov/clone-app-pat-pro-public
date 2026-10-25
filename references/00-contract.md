@@ -62,13 +62,16 @@ clone-workspace/{name}/
 ├── 06-qa/
 │   └── cycle-{N}/
 │       ├── screenshots/{page}--{viewport}.png      # clone VISUAL-REFERENCE shots (eyeball, not the gate)
-│       ├── clone-styles.json                       # clone's computed styles read via javascript_tool (§5)
+│       ├── styles/{page}--{viewport}.json          # per-task computed styles read via javascript_tool (§5)
+│       ├── clone-styles.json                       # orchestrator merge of styles/, by route and viewport (§5)
 │       ├── metrics.json                            # the GATE input: style_assertions result (§5)
 │       ├── fragments/{page}--{viewport}.bugs.json  # parallel-safe per-task bug fragments
 │       └── bugs.json                               # merged + renumbered (deterministic, by orchestrator)
 ├── 07-fix/cycle-{N}/
-│   └── fix-set-{k}.json            # disjoint file partitions for parallel fix agents
+│   ├── fix-set-{k}.json            # disjoint file partitions for parallel fix agents
+│   └── fix-set-{k}.{clone-styles,metrics}.json  # each fix agent's own re-check files
 └── 09-polish/
+    ├── {page}.{clone-styles,metrics}.json  # polish re-check files for one page
     └── final-screenshots/{page}--{viewport}.png
 ```
 
@@ -95,7 +98,7 @@ clone-workspace/{name}/
 
 **Sequential spine (never parallelize the writer):** Recon → Extraction → **Design Spec (single author)** → Architecture → **Build-foundation (sole author of tokens/globals)** → Build-pages → [QA → Fix]×converge → Polish. Code work that can fan out fans out via Task sub-agents; every browser-touching step stays sequential under the one Chrome.
 
-**Merge steps are deterministic code (jq/python in the orchestrator), NEVER an agent:** `sitemap.json` (union routes), extraction shared files (concat fragments), `bugs.json` (concat + renumber `BUG-NNN`).
+**Merge steps are deterministic code (jq/python in the orchestrator), NEVER an agent:** `sitemap.json` (union routes), extraction shared files (concat fragments), `clone-styles.json` (nest each `styles/{page}--{viewport}.json` under its route and viewport), `bugs.json` (concat + renumber `BUG-NNN`).
 
 ---
 
@@ -142,7 +145,7 @@ Structure: it **opens** with a **Visual Theme** paragraph (the overall feel/atmo
 
 Verification is measured, never eyeballed — and the measurement is **computed styles, not a pixel diff.** Each QA cycle:
 
-1. The QA agent opens the running clone in the Claude Chrome extension and, via `mcp__claude-in-chrome__javascript_tool`, reads each asserted selector's computed styles (`getComputedStyle`) → writes `06-qa/cycle-N/clone-styles.json`, scoped by route and viewport: `{ "/": { "desktop": { "<selector>": { "<prop>": "<value>" } } } }`.
+1. The QA agent opens the running clone in the Claude Chrome extension and, via `mcp__claude-in-chrome__javascript_tool`, reads each asserted selector's computed styles (`getComputedStyle`) → writes `06-qa/cycle-N/styles/{page}--{viewport}.json` as `{ "<selector>": { "<prop>": "<value>" } }`. The orchestrator merges those files into `06-qa/cycle-N/clone-styles.json`, scoped by route and viewport: `{ "/": { "desktop": { "<selector>": { "<prop>": "<value>" } } } }`.
 2. The orchestrator runs, via Bash, from `clone-workspace/{name}/` (`<skill-dir>` is the skill directory named at the top of `SKILL.md`):
    ```bash
    node "<skill-dir>/scripts/assert-styles.mjs" \

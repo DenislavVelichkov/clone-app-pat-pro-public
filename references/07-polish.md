@@ -12,14 +12,14 @@ You fan out per page (sequentially on the shared Chrome). You touch ONLY route `
 
 | File | What it gives you |
 |------|-------------------|
-| `06-qa/cycle-{N}/diff/metrics.json` | **The final (converged) cycle's metrics.** Source of truth for which selectors still carry a residual computed-style delta. Use the highest-N cycle dir — that is the CONVERGED-PASS cycle. Read the `pages[]` entry for `{PAGE}` and its `style_assertions` block (even passed assertions list the selectors and props that were compared, with their computed-vs-expected values). |
+| `06-qa/cycle-{N}/metrics.json` + `06-qa/cycle-{N}/clone-styles.json` | **The final (converged) cycle's gate result and measured values.** Use the highest-N cycle dir, which is the CONVERGED-PASS cycle. `style_assertions.failures` lists failures only, so at CONVERGED-PASS it is usually empty. Find residual deltas by comparing each `{PAGE}` entry in `03-design-spec/assertions.json` with its measured value in `clone-styles.json`. |
 | `06-qa/cycle-{N}/screenshots/{page}--desktop.png` | The clone shot from the converged cycle — a visual eyeball reference for side-by-side comparison (not a pixel-diff source). |
 | `01-recon/screenshots/{page}--desktop.png` | The FULL-PAGE original reference — ground truth for side-by-side eyeball comparison. |
 | `03-design-spec/DESIGN.md` | Authoritative token values (colors, gradients, type, spacing, radius, shadows, motion, states, theme tokens). |
-| `scripts/assert-styles.mjs` | The computed-style comparator (contract §5). You will RUN this against your page rather than walking elements by hand. |
+| `<skill-dir>/scripts/assert-styles.mjs` | The computed-style comparator (contract §5). You will RUN this against your page rather than walking elements by hand. |
 | Running dev server at `localhost:3000` (route `{PAGE}`) | The clone in its current, gate-passing state. |
 
-Read the metrics.json `style_assertions` for `{PAGE}` and view the converged screenshot beside the recon baseline before doing anything. The selectors whose computed-vs-expected delta is non-zero (even within tolerance) tell you exactly where to look; do not polish selectors the assertions already show at exact match.
+Compare the `{PAGE}` assertions with the converged `clone-styles.json` values and view the converged screenshot beside the recon baseline before doing anything. The selectors whose computed-vs-expected delta is non-zero (even within tolerance) tell you exactly where to look; do not polish selectors the assertions already show at exact match.
 
 ---
 
@@ -29,19 +29,22 @@ The old approach of manually walking every element by hand is **deleted**. It do
 
 ### Step A — Map the residual regions
 
-1. Read the `style_assertions` block for `{PAGE}` in `06-qa/cycle-{N}/diff/metrics.json`. Identify each selector whose computed value still carries a non-zero delta from its `DESIGN.md` expected value (passing within tolerance is still a residual). Note its on-page location (e.g. "hero CTA", "pricing card shadow band", "footer link row").
+1. For each `{PAGE}` entry in `03-design-spec/assertions.json`, read its measured value in `06-qa/cycle-{N}/clone-styles.json`. Identify each selector whose computed value still carries a non-zero delta from its expected value (passing within tolerance is still a residual). Note its on-page location (e.g. "hero CTA", "pricing card shadow band", "footer link row").
 2. Open the clone with `mcp__claude-in-chrome__navigate` to `http://localhost:3000/{route}`, and take a visual extension screenshot (`mcp__claude-in-chrome__computer` `screenshot`) as an eyeball reference. Compare it against the recon baseline `01-recon/screenshots/{page}--desktop.png` at the same scroll position to confirm which element(s) sit under each residual selector.
 3. This selector set — and ONLY this set — is your polish work list. Anything the assertions show at exact match is out of scope.
 
 ### Step B — Run assert-styles against the residual regions
 
-Run the computed-style comparator the gate uses, scoped to your page, and read its per-selector output:
+Re-read this page's computed styles at desktop with the QA Step 2 script (`06-qa.md`). Write them to `09-polish/{page-slug}.clone-styles.json` in the merged shape, `{ "{PAGE}": { "desktop": { ... } } }`, or as the flat object if the assertions carry no `page` or `viewport`. Then run the comparator the gate uses, from `clone-workspace/{name}/`:
 
 ```bash
-node scripts/assert-styles.mjs --page {PAGE} --url http://localhost:3000/{route} --spec 03-design-spec/DESIGN.md
+node "<skill-dir>/scripts/assert-styles.mjs" \
+  --assertions 03-design-spec/assertions.json \
+  --clone-styles 09-polish/{page-slug}.clone-styles.json \
+  --out 09-polish/{page-slug}.metrics.json
 ```
 
-`assert-styles.mjs` reads `DESIGN.md` tokens and compares each selector's computed `color / backgroundColor / backgroundImage / fontSize / fontWeight / letterSpacing / lineHeight / borderRadius / boxShadow / cursor / transition` against the spec — colors normalized to `rgb()`, numerics within ±1px / ±0.01em (contract §5). For every selector that maps to a residual region, read its computed-vs-expected delta directly from the comparator output. Trust the measured number, never the screenshot impression. If a property is at the edge of the ±1px / ±0.01em tolerance (passes the gate but is non-zero), tighten it to exact — that residual delta is precisely what a designer's eye catches.
+`assert-styles.mjs` compares each assertion's measured value with its `expected` value in `assertions.json`, which holds the `DESIGN.md` tokens. Colors are normalized to `rgb()` and numerics pass within ±1px / ±0.01em (contract §5). It lists failures only. Assertions for other pages or for mobile also fail, because your file holds only `{PAGE}` at desktop, so read only failures whose `page` is `{PAGE}` and `viewport` is `desktop`. For a residual that passes within tolerance, compare the value in your styles file with `expected` directly. Trust the measured number, never the screenshot impression. If a property is at the edge of the ±1px / ±0.01em tolerance (passes the gate but is non-zero), tighten it to exact — that residual delta is precisely what a designer's eye catches.
 
 For any property assert-styles does not cover (gradient stop positions, per-side radius asymmetry, layered/inset shadow ordering, backdrop-filter, focus-ring geometry), drop to a targeted computed-style read on the specific residual element only, via `mcp__claude-in-chrome__javascript_tool`:
 
@@ -185,7 +188,7 @@ The screenshot should be FULL-PAGE desktop (1920 wide) so it lines up 1:1 with t
 
 3. Set this task's flag in `status.json`.
 
-Write nothing else. No separate polish report, no walkthrough dir — the residual deltas you resolve are evidenced by the re-run assert-styles output (zero remaining non-zero deltas) and the final screenshot reading clean against the baseline.
+Write nothing else besides the Step B re-check files `09-polish/{page-slug}.clone-styles.json` and `09-polish/{page-slug}.metrics.json`. No separate polish report, no walkthrough dir — the residual deltas you resolve are evidenced by the re-run assert-styles output (zero remaining non-zero deltas) and the final screenshot reading clean against the baseline.
 
 ---
 

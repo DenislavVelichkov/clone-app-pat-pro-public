@@ -104,11 +104,11 @@ INPUTS: PAGE={PAGE}, VIEWPORT={VIEWPORT}, CYCLE={CYCLE}, the running clone at ht
 
 TASK:
 1. Open http://localhost:3000{PAGE} with the Claude Chrome extension (mcp__claude-in-chrome__navigate). Set the {VIEWPORT} viewport (resize_window). Disable animations (emulate prefers-reduced-motion) and wait for fonts/hydration.
-2. For every selector in 03-design-spec/assertions.json, read getComputedStyle via mcp__claude-in-chrome__javascript_tool, and write the values to 06-qa/cycle-{CYCLE}/clone-styles.json (shape: {"<selector>": {"<prop>": "<computed value>"}}).
+2. For every selector in 03-design-spec/assertions.json, read getComputedStyle via mcp__claude-in-chrome__javascript_tool, and write the values to 06-qa/cycle-{CYCLE}/styles/{page-slug}--{VIEWPORT}.json (shape: {"<selector>": {"<prop>": "<computed value>"}}). The orchestrator merges every task's file into 06-qa/cycle-{CYCLE}/clone-styles.json by route and viewport.
 3. Take a visual-reference screenshot via the Chrome extension (mcp__claude-in-chrome__computer) to eyeball the clone against the real site for gross structural issues — this is a reference, NOT a saved-file pixel diff.
 4. The orchestrator runs `node "<skill-dir>/scripts/assert-styles.mjs" --assertions 03-design-spec/assertions.json --clone-styles 06-qa/cycle-{CYCLE}/clone-styles.json --out 06-qa/cycle-{CYCLE}/metrics.json` (`<skill-dir>` = the skill directory named in `SKILL.md`; a nonzero exit means assertions failed). For each failed assertion, author a bug entry with the measured evidence (the clone's getComputedStyle value vs the expected token). Name the target file in fix_hint so fixes parallelize.
 
-OUTPUTS: 06-qa/cycle-{CYCLE}/clone-styles.json and 06-qa/cycle-{CYCLE}/fragments/{page-slug}--{VIEWPORT}.bugs.json — array of {id?,severity(A/B/C/F),element,selector,viewport,expected,actual,evidence_method,fix_hint,file}. (Orchestrator merges + renumbers ids.)
+OUTPUTS: 06-qa/cycle-{CYCLE}/styles/{page-slug}--{VIEWPORT}.json and 06-qa/cycle-{CYCLE}/fragments/{page-slug}--{VIEWPORT}.bugs.json — array of {id?,severity(A/B/C/F),element,selector,viewport,expected,actual,evidence_method,fix_hint,file}. (Orchestrator merges + renumbers ids.)
 
 EVIDENCE: every bug needs a measured evidence_method (a getComputedStyle value). No "looks off" without a number. COMPLETION: <promise>CONTINUE</promise>.
 ```
@@ -118,7 +118,7 @@ EVIDENCE: every bug needs a measured evidence_method (a getComputedStyle value).
 ```
 ROLE: You are a FIX agent owning ONE disjoint set of files. You run in parallel with other fix agents — edit ONLY files in your set; never touch another set's files.
 
-INPUTS: CYCLE={CYCLE}, your file partition at {FIXSET} (a JSON array of bugs for your files), 06-qa/cycle-{CYCLE}/diff/metrics.json + diff PNGs, 03-design-spec/DESIGN.md.
+INPUTS: CYCLE={CYCLE}, your file partition at {FIXSET} (a JSON array of bugs for your files), 06-qa/cycle-{CYCLE}/metrics.json + 06-qa/cycle-{CYCLE}/clone-styles.json, 03-design-spec/DESIGN.md.
 
 TASK: fix the bugs in {FIXSET}, highest mismatch-contribution first. The diff overlay shows exactly which region differs — fix that region to the design-system token. After each change, re-diff the affected page (re-screenshot that page×viewport and re-run the per-page diff); if its mismatch_pct did not decrease, REVERT the change. Keep the build compiling.
 
@@ -130,11 +130,11 @@ OUTPUTS: edits to your files in the output dir. COMPLETION: <promise>CONTINUE</p
 ```
 ROLE: You are a POLISH agent for ONE page, running only after CONVERGED-PASS. You close the residual sub-2% gap to sub-pixel.
 
-INPUTS: PAGE={PAGE}, the final 06-qa metrics.json residual regions, 03-design-spec/DESIGN.md, the running clone.
+INPUTS: PAGE={PAGE}, the final 06-qa clone-styles.json values compared with the {PAGE} entries in assertions.json, 03-design-spec/DESIGN.md, the running clone.
 
 TASK: for route {PAGE}, run the assert-styles computed-style comparison on the residual-diff regions and tighten: sub-pixel spacing/radius, shadow offset/blur/spread/opacity (incl. inset), gradient stops, cursor on every interactive element, focus rings, transition timing/easing. Capture a final full-page screenshot.
 
-OUTPUTS: edits in the output dir + 09-polish/final-screenshots/{page-slug}--desktop.png. COMPLETION: <promise>CONTINUE</promise>.
+OUTPUTS: edits in the output dir + 09-polish/{page-slug}.clone-styles.json + 09-polish/{page-slug}.metrics.json + 09-polish/final-screenshots/{page-slug}--desktop.png. COMPLETION: <promise>CONTINUE</promise>.
 ```
 
 ## Stage 10: Feature
