@@ -35,7 +35,7 @@ The old approach of manually walking every element by hand is **deleted**. It do
 
 ### Step B — Run assert-styles against the residual regions
 
-Re-read this page's computed styles at desktop with the QA Step 2 script (`06-qa.md`). Write them to `09-polish/{page-slug}.clone-styles.json` in the merged shape, `{ "{PAGE}": { "desktop": { ... } } }`, or as the flat object if the assertions carry no `page` or `viewport`. Then run the comparator the gate uses, from `clone-workspace/{name}/`:
+Copy the converged `06-qa/cycle-{N}/clone-styles.json` to `09-polish/{page-slug}.clone-styles.json` once. Re-read this page's computed styles at desktop with the QA Step 2 script (`06-qa.md`) and overwrite only the `{PAGE}` → `desktop` branch of your copy, or the whole flat object if the assertions carry no `page` or `viewport`. Then run the comparator the gate uses, from `clone-workspace/{name}/`:
 
 ```bash
 node "<skill-dir>/scripts/assert-styles.mjs" \
@@ -44,7 +44,7 @@ node "<skill-dir>/scripts/assert-styles.mjs" \
   --out 09-polish/{page-slug}.metrics.json
 ```
 
-`assert-styles.mjs` compares each assertion's measured value with its `expected` value in `assertions.json`, which holds the `DESIGN.md` tokens. Colors are normalized to `rgb()` and numerics pass within ±1px / ±0.01em (contract §5). It lists failures only. Assertions for other pages or for mobile also fail, because your file holds only `{PAGE}` at desktop, so read only failures whose `page` is `{PAGE}` and `viewport` is `desktop`. For a residual that passes within tolerance, compare the value in your styles file with `expected` directly. Trust the measured number, never the screenshot impression. If a property is at the edge of the ±1px / ±0.01em tolerance (passes the gate but is non-zero), tighten it to exact — that residual delta is precisely what a designer's eye catches.
+`assert-styles.mjs` compares each assertion's measured value with its `expected` value in `assertions.json`, which holds the `DESIGN.md` tokens. Colors are normalized to `rgb()` and numerics pass within ±1px / ±0.01em (contract §5). It lists failures only. Every other branch of your copy holds the converged passing values, so a nonzero exit means a `{PAGE}` desktop value regressed. For a residual that passes within tolerance, compare the value in your styles file with `expected` directly. Trust the measured number, never the screenshot impression. If a property is at the edge of the ±1px / ±0.01em tolerance (passes the gate but is non-zero), tighten it to exact — that residual delta is precisely what a designer's eye catches.
 
 For any property assert-styles does not cover (gradient stop positions, per-side radius asymmetry, layered/inset shadow ordering, backdrop-filter, focus-ring geometry), drop to a targeted computed-style read on the specific residual element only, via `mcp__claude-in-chrome__javascript_tool`:
 

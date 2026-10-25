@@ -1,6 +1,6 @@
 # Stage Prompts
 
-The orchestrator (`clone.sh`) pulls each fenced block by its exact `## Stage …` header via `get_prompt()`, substitutes placeholders (`{PAGE}` `{VIEWPORT}` `{CYCLE}` `{FIXSET}`), then appends `00-contract.md`, the browser block, and the stage's detailed reference file. Each prompt is a strict, self-contained system prompt (see contract §7). **Do not rename a header or remove a placeholder without updating `clone.sh`.** All artifact paths are relative to the workspace and defined in contract §1.
+The orchestrator (the in-session agent, see `SKILL.md`) takes each fenced block by its exact `## Stage …` header, appends `00-contract.md`, the browser block, and the stage's detailed reference file, then substitutes placeholders (`{PAGE}` `{VIEWPORT}` `{CYCLE}` `{FIXSET}`) and replaces every `<skill-dir>` with the absolute skill directory from `SKILL.md`, across the prompt and the appended files. Sub-agents never see `SKILL.md`, so an unreplaced `<skill-dir>` is a path they cannot resolve. Each prompt is a strict, self-contained system prompt (see contract §7). **Do not rename a header or remove a placeholder without updating this list.** All artifact paths are relative to the workspace and defined in contract §1.
 
 ## Stage 1: Recon
 
@@ -118,7 +118,7 @@ EVIDENCE: every bug needs a measured evidence_method (a getComputedStyle value).
 ```
 ROLE: You are a FIX agent owning ONE disjoint set of files. You run in parallel with other fix agents — edit ONLY files in your set; never touch another set's files.
 
-INPUTS: CYCLE={CYCLE}, your file partition at {FIXSET} (a JSON array of bugs for your files), 06-qa/cycle-{CYCLE}/metrics.json + 06-qa/cycle-{CYCLE}/clone-styles.json, 03-design-spec/DESIGN.md.
+INPUTS: CYCLE={CYCLE}, SKILL_DIR=<skill-dir>, your file partition at {FIXSET} (a JSON array of bugs for your files), 06-qa/cycle-{CYCLE}/metrics.json + 06-qa/cycle-{CYCLE}/clone-styles.json, 03-design-spec/DESIGN.md.
 
 TASK: fix the bugs in {FIXSET}, highest mismatch-contribution first. The diff overlay shows exactly which region differs — fix that region to the design-system token. After each change, re-diff the affected page (re-screenshot that page×viewport and re-run the per-page diff); if its mismatch_pct did not decrease, REVERT the change. Keep the build compiling.
 
@@ -130,7 +130,7 @@ OUTPUTS: edits to your files in the output dir. COMPLETION: <promise>CONTINUE</p
 ```
 ROLE: You are a POLISH agent for ONE page, running only after CONVERGED-PASS. You close the residual sub-2% gap to sub-pixel.
 
-INPUTS: PAGE={PAGE}, the final 06-qa clone-styles.json values compared with the {PAGE} entries in assertions.json, 03-design-spec/DESIGN.md, the running clone.
+INPUTS: PAGE={PAGE}, SKILL_DIR=<skill-dir>, the final 06-qa clone-styles.json values compared with the {PAGE} entries in assertions.json, 03-design-spec/DESIGN.md, the running clone.
 
 TASK: for route {PAGE}, run the assert-styles computed-style comparison on the residual-diff regions and tighten: sub-pixel spacing/radius, shadow offset/blur/spread/opacity (incl. inset), gradient stops, cursor on every interactive element, focus rings, transition timing/easing. Capture a final full-page screenshot.
 

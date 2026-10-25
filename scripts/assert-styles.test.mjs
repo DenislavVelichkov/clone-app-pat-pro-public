@@ -77,3 +77,37 @@ test("old flat format passes", () => {
   assert.equal(r.status, 0);
   assert.equal(r.block.passed, 1);
 });
+
+test("color comma spacing does not matter", () => {
+  const r = run(
+    [{ selector: ".a", prop: "color", expected: "rgb(255,255,255)" }],
+    { ".a": { color: "rgb(255, 255, 255)" } },
+  );
+  assert.equal(r.status, 0);
+});
+
+test("hex colors match their rgb() form", () => {
+  const r = run(
+    [
+      { selector: ".a", prop: "color", expected: "#fff" },
+      { selector: ".a", prop: "backgroundColor", expected: "#1A2B3C" },
+      { selector: ".a", prop: "borderColor", expected: "#00000080" },
+      { selector: ".a", prop: "outlineColor", expected: "#000f" },
+      { selector: ".a", prop: "backgroundImage", expected: "linear-gradient(90deg, #ff0000 0%, #0000ff 100%)" },
+      { selector: ".b", prop: "color", expected: "#000" },
+    ],
+    {
+      ".a": {
+        color: "rgb(255, 255, 255)",
+        backgroundColor: "rgb(26, 43, 60)",
+        borderColor: "rgba(0, 0, 0, 0.5)",
+        outlineColor: "rgb(0, 0, 0)",
+        backgroundImage: "linear-gradient(90deg, rgb(255, 0, 0) 0%, rgb(0, 0, 255) 100%)",
+      },
+      ".b": { color: "rgb(255, 255, 255)" },
+    },
+  );
+  assert.equal(r.status, 1);
+  assert.equal(r.block.passed, 5);
+  assert.deepEqual(r.block.failures.map((f) => f.selector), [".b"]);
+});
