@@ -32,7 +32,18 @@ let assertions = [], clone = {};
 try { assertions = JSON.parse(fs.readFileSync(assertionsPath)); } catch (e) { console.error("can't read assertions:", e.message); process.exit(2); }
 try { clone = JSON.parse(fs.readFileSync(clonePath)); } catch (e) { console.error("can't read clone-styles:", e.message); process.exit(2); }
 
-const norm = (s) => String(s ?? "").replace(/\s+/g, " ").trim().toLowerCase();
+const rgb = (r, g, b, a) => (a >= 1 ? `rgb(${r},${g},${b})` : `rgba(${r},${g},${b},${a})`);
+const hexToRgb = (_, h) => {
+  const [r, g, b, a = 255] = (h.length <= 4 ? h.replace(/./g, "$&$&") : h).match(/../g).map((x) => parseInt(x, 16));
+  return rgb(r, g, b, +(a / 255).toFixed(2));
+};
+// One canonical color form for both sides: hex expanded, separators unspaced, alpha to 2 decimals.
+// shortcut: named colors ("white", "transparent") are not converted; DESIGN.md asks for rgb() values.
+const norm = (s) =>
+  String(s ?? "").replace(/\s+/g, " ").trim().toLowerCase()
+    .replace(/\s*,\s*/g, ",").replace(/\(\s+|\s+\)/g, (m) => m.trim())
+    .replace(/#([0-9a-f]{8}|[0-9a-f]{6}|[0-9a-f]{3,4})\b/g, hexToRgb)
+    .replace(/rgba\((\d+),(\d+),(\d+),([\d.]+)\)/g, (_, r, g, b, a) => rgb(r, g, b, +Number(a).toFixed(2)));
 const scalar = (s) => {
   const match = String(s ?? "").trim().match(/^(-?(?:\d+\.?\d*|\.\d+))(px|em|rem|%)?$/i);
   return match ? { value: Number(match[1]), unit: (match[2] || "").toLowerCase() } : null;
