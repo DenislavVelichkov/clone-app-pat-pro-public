@@ -123,6 +123,19 @@ test("alpha rounds to 2 decimals and opaque rgba is rgb", () => {
   assert.equal(r.status, 0);
 });
 
+test("legacy rgb() alpha and percent alpha match rgba()", () => {
+  const r = run(
+    [
+      { selector: ".a", prop: "color", expected: "rgb(0, 0, 0, 0.5)" },
+      { selector: ".a", prop: "borderColor", expected: "rgba(0, 0, 0, 50%)" },
+      { selector: ".b", prop: "color", expected: "rgba(0, 0, 0, 25%)" },
+    ],
+    { ".a": { color: "rgba(0, 0, 0, 0.5)", borderColor: "rgba(0, 0, 0, 0.5)" }, ".b": { color: "rgba(0, 0, 0, 0.5)" } },
+  );
+  assert.equal(r.status, 1);
+  assert.deepEqual(r.block.failures.map((f) => f.selector), [".b"]);
+});
+
 test("url fragment ids are not read as hex colors", () => {
   const r = run(
     [

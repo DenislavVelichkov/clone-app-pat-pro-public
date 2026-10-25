@@ -153,7 +153,7 @@ Verification is measured, never eyeballed — and the measurement is **computed 
      --clone-styles 06-qa/cycle-N/clone-styles.json \
      --out 06-qa/cycle-N/metrics.json
    ```
-   The script exits nonzero when assertions fail; read the failures from `metrics.json` rather than treating the exit as a crash. Each assertion carries `page` and `viewport`, so desktop and mobile values are checked separately (unscoped entries still work). Numeric values compare only when units match: `16px` vs `16%` fails, and other strings such as `1px solid red` must match exactly.
+   The script exits nonzero when assertions fail; read the failures from `metrics.json` rather than treating the exit as a crash. Each assertion carries `page` and `viewport`, so desktop and mobile values are checked separately (unscoped entries still work). Numeric values compare only when units match: `16px` vs `16%` fails, and other strings such as `1px solid red` must match exactly after case, spacing and color format are normalized.
    `assert-styles.mjs` compares the clone's read computed values to the DESIGN.md tokens in `assertions.json` — per selector, the asserted `color/bg/backgroundImage/fontSize/fontWeight/letterSpacing/lineHeight/borderRadius/boxShadow/cursor/transition` (colors normalized to `rgb()`, numerics ±1px / ±0.01em).
 
 `metrics.json`:

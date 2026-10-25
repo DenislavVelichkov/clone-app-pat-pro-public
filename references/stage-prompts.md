@@ -1,6 +1,6 @@
 # Stage Prompts
 
-The orchestrator (the in-session agent, see `SKILL.md`) takes each fenced block by its exact `## Stage …` header, appends `00-contract.md`, the browser block, and the stage's detailed reference file, then substitutes placeholders (`{PAGE}` `{VIEWPORT}` `{CYCLE}` `{FIXSET}`) and replaces every `<skill-dir>` with the absolute skill directory from `SKILL.md`, across the prompt and the appended files. Sub-agents never see `SKILL.md`, so an unreplaced `<skill-dir>` is a path they cannot resolve. Each prompt is a strict, self-contained system prompt (see contract §7). **Do not rename a header or remove a placeholder without updating this placeholder list.** All artifact paths are relative to the workspace and defined in contract §1.
+The orchestrator (the in-session agent, see `SKILL.md`) takes each fenced block by its exact `## Stage …` header, appends `00-contract.md`, the browser block, and the stage's detailed reference file, then substitutes placeholders (`{PAGE}` `{VIEWPORT}` `{CYCLE}` `{FIXSET}`) and replaces every `<skill-dir>` with the absolute skill directory from `SKILL.md`, across the prompt and the appended files. Sub-agents never see `SKILL.md`, so an unreplaced `<skill-dir>` is a path they cannot resolve. Each prompt is a strict, self-contained system prompt (see contract §7). All artifact paths are relative to the workspace and defined in contract §1.
 
 ## Stage 1: Recon
 
