@@ -333,20 +333,23 @@ This is the **style-assertion half of the gate** (contract §5). `scripts/assert
 
 ### 5.1 Shape (exactly this — consumed verbatim)
 
+One assertion per measured selector/property/route/viewport:
+
 ```json
 [
-  { "selector": ".btn-primary", "prop": "backgroundImage", "expected": "linear-gradient(135deg, rgb(99,102,241) 0%, rgb(139,92,246) 100%)" },
-  { "selector": ".btn-primary", "prop": "color", "expected": "rgb(255,255,255)" },
-  { "selector": ".btn-primary", "prop": "cursor", "expected": "pointer" },
-  { "selector": "h1", "prop": "fontSize", "expected": "64px" },
-  { "selector": "h1", "prop": "fontWeight", "expected": "800" },
-  { "selector": ".card", "prop": "borderRadius", "expected": "16px" },
-  { "selector": ".card", "prop": "boxShadow", "expected": "rgba(0, 0, 0, 0.12) 0px 1px 3px 0px, rgba(0, 0, 0, 0.24) 0px 1px 2px 0px" },
-  { "selector": "body", "prop": "backgroundColor", "expected": "rgb(255,255,255)" }
+  { "page": "/", "viewport": "desktop", "selector": ".btn-primary", "prop": "backgroundImage", "expected": "linear-gradient(135deg, rgb(99,102,241) 0%, rgb(139,92,246) 100%)" },
+  { "page": "/", "viewport": "desktop", "selector": ".btn-primary", "prop": "color", "expected": "rgb(255,255,255)" },
+  { "page": "/", "viewport": "desktop", "selector": ".btn-primary", "prop": "cursor", "expected": "pointer" },
+  { "page": "/", "viewport": "desktop", "selector": "h1", "prop": "fontSize", "expected": "64px" },
+  { "page": "/", "viewport": "mobile", "selector": "h1", "prop": "fontSize", "expected": "36px" },
+  { "page": "/", "viewport": "desktop", "selector": "h1", "prop": "fontWeight", "expected": "800" },
+  { "page": "/pricing", "viewport": "desktop", "selector": ".card", "prop": "borderRadius", "expected": "16px" },
+  { "page": "/pricing", "viewport": "desktop", "selector": ".card", "prop": "boxShadow", "expected": "rgba(0, 0, 0, 0.12) 0px 1px 3px 0px, rgba(0, 0, 0, 0.24) 0px 1px 2px 0px" },
+  { "page": "/", "viewport": "desktop", "selector": "body", "prop": "backgroundColor", "expected": "rgb(255,255,255)" }
 ]
 ```
 
-Each object has EXACTLY three keys: `selector`, `prop`, `expected`. No comments, no extra keys — `assert-styles.mjs` reads them positionally.
+Each object has exactly five keys: `page`, `viewport`, `selector`, `prop`, `expected`. `page` is the route path from `sitemap.json`; `viewport` is a configured viewport key. No comments, no extra keys. The script still accepts older entries without `page`/`viewport`.
 
 ### 5.2 How to pick **selectors** that exist in the built clone
 - Prefer **stable, structural selectors** that the architecture/build will reproduce: element tags (`body`, `h1`, `h2`, `a`), and the semantic class names you saw in `{page}.dom.html` that Build is told to keep (e.g. `.btn-primary`, `.card`, `.nav`). Read `{page}.dom.html` to confirm the class/tag actually appears.

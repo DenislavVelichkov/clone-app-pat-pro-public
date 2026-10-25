@@ -52,7 +52,7 @@ ROLE: You are the DESIGN SPEC agent — the SINGLE author of the design system. 
 INPUTS: all of 02-extraction/ (fragments/*, css-variables.json, all-styles.json, fonts.json, assets.json).
 
 TASK: produce 03-design-spec/DESIGN.md as a token system inferred by usage frequency + confidence (most-used value for a role = the token; boost confidence for values seen across multiple routes). Mandatory sections (contract §4): Colors + a Gradients table (type, angle/shape, stops), Typography (incl. variable-font axes), Spacing scale, Border-radius scale, Shadows (layered/inset), Effects/backdrop-filter, Motion (durations/easings/keyframes), States (hover/focus/active), Layout + measured breakpoints, Assets (downloaded paths), Theme tokens (light/dark).
-ALSO emit 03-design-spec/assertions.json — an array of {"selector","prop","expected"} the QA gate will check against the built clone (cover the highest-signal tokens: key colors, gradients on buttons, font sizes/weights, radii, shadows). This file is consumed by assert-styles.mjs.
+ALSO emit 03-design-spec/assertions.json — an array of {"page","viewport","selector","prop","expected"} (one per route × viewport) the QA gate will check against the built clone (cover the highest-signal tokens: key colors, gradients on buttons, font sizes/weights, radii, shadows). This file is consumed by assert-styles.mjs.
 
 OUTPUTS: 03-design-spec/DESIGN.md, 03-design-spec/assertions.json.
 EVIDENCE: cite the extraction artifact each token derives from. When sources conflict, CSSOM rule > forced-state > computed > screenshot. COMPLETION: <promise>CONTINUE</promise>.
@@ -106,7 +106,7 @@ TASK:
 1. Open http://localhost:3000{PAGE} with the Claude Chrome extension (mcp__claude-in-chrome__navigate). Set the {VIEWPORT} viewport (resize_window). Disable animations (emulate prefers-reduced-motion) and wait for fonts/hydration.
 2. For every selector in 03-design-spec/assertions.json, read getComputedStyle via mcp__claude-in-chrome__javascript_tool, and write the values to 06-qa/cycle-{CYCLE}/clone-styles.json (shape: {"<selector>": {"<prop>": "<computed value>"}}).
 3. Take a visual-reference screenshot via the Chrome extension (mcp__claude-in-chrome__computer) to eyeball the clone against the real site for gross structural issues — this is a reference, NOT a saved-file pixel diff.
-4. The orchestrator runs `node scripts/assert-styles.mjs --assertions 03-design-spec/assertions.json --clone-styles 06-qa/cycle-{CYCLE}/clone-styles.json`. For each failed assertion, author a bug entry with the measured evidence (the clone's getComputedStyle value vs the expected token). Name the target file in fix_hint so fixes parallelize.
+4. The orchestrator runs `node "<skill-dir>/scripts/assert-styles.mjs" --assertions 03-design-spec/assertions.json --clone-styles 06-qa/cycle-{CYCLE}/clone-styles.json --out 06-qa/cycle-{CYCLE}/metrics.json` (`<skill-dir>` = the skill directory named in `SKILL.md`; a nonzero exit means assertions failed). For each failed assertion, author a bug entry with the measured evidence (the clone's getComputedStyle value vs the expected token). Name the target file in fix_hint so fixes parallelize.
 
 OUTPUTS: 06-qa/cycle-{CYCLE}/clone-styles.json and 06-qa/cycle-{CYCLE}/fragments/{page-slug}--{VIEWPORT}.bugs.json — array of {id?,severity(A/B/C/F),element,selector,viewport,expected,actual,evidence_method,fix_hint,file}. (Orchestrator merges + renumbers ids.)
 

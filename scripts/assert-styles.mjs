@@ -10,9 +10,10 @@
 //   node assert-styles.mjs --assertions <03-design-spec/assertions.json> \
 //        --clone-styles <clone-styles.json> --out <metrics.json>
 //
-//   assertions.json   : [{ "selector": "...", "prop": "...", "expected": "..." }]
-//   clone-styles.json : { "<selector>": { "<prop>": "<actual computed value>" } }
-//                       (produced by the agent via javascript_tool getComputedStyle)
+//   assertions.json   : [{ "page": "/", "viewport": "desktop", "selector": "...", "prop": "...", "expected": "..." }]
+//   clone-styles.json : { "/": { "desktop": { "<selector>": { "<prop>": "<actual computed value>" } } } }
+//                       (produced by the agent via javascript_tool getComputedStyle;
+//                        page/viewport are optional, so the old flat format still works)
 //
 // PASS = failed === 0.
 
@@ -34,21 +35,34 @@ try { assertions = JSON.parse(fs.readFileSync(assertionsPath)); } catch (e) { co
 try { clone = JSON.parse(fs.readFileSync(clonePath)); } catch (e) { console.error("can't read clone-styles:", e.message); process.exit(2); }
 
 const norm = (s) => String(s ?? "").replace(/\s+/g, " ").trim().toLowerCase();
-const numeric = (s) => { const m = String(s).match(/-?\d*\.?\d+/); return m ? parseFloat(m[0]) : NaN; };
+const scalar = (s) => {
+  const match = String(s ?? "").trim().match(/^(-?(?:\d+\.?\d*|\.\d+))(px|em|rem|%)?$/i);
+  return match ? { value: Number(match[1]), unit: (match[2] || "").toLowerCase() } : null;
+};
 
 const failures = [];
 let passed = 0;
 for (const a of assertions) {
-  const actual = (clone[a.selector] || {})[a.prop];
+  let scope = clone;
+  if (a.page != null) scope = scope?.[a.page] ?? {};
+  if (a.viewport != null) scope = scope?.[a.viewport] ?? {};
+  const actual = (scope?.[a.selector] || {})[a.prop];
   const exp = a.expected;
   let ok;
-  const en = numeric(exp), an = numeric(actual);
-  if (!isNaN(en) && !isNaN(an) && /px|em|rem|%|^\s*-?\d/.test(String(exp))) {
-    ok = Math.abs(en - an) <= (String(exp).includes("em") ? 0.01 : 1);
+  const expectedScalar = scalar(exp), actualScalar = scalar(actual);
+  if (expectedScalar && actualScalar && expectedScalar.unit === actualScalar.unit && ["px", "em"].includes(expectedScalar.unit)) {
+    const tolerance = expectedScalar.unit === "em" ? 0.01 : 1;
+    ok = Math.abs(expectedScalar.value - actualScalar.value) <= tolerance;
   } else {
     ok = norm(exp) === norm(actual);
   }
-  if (ok) passed++; else failures.push({ selector: a.selector, prop: a.prop, expected: exp, actual: actual ?? null });
+  if (ok) passed++;
+  else {
+    const failure = { selector: a.selector, prop: a.prop, expected: exp, actual: actual ?? null };
+    if (a.page != null) failure.page = a.page;
+    if (a.viewport != null) failure.viewport = a.viewport;
+    failures.push(failure);
+  }
 }
 
 const block = { total: assertions.length, passed, failed: failures.length, failures };

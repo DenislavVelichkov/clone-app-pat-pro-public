@@ -142,14 +142,15 @@ Structure: it **opens** with a **Visual Theme** paragraph (the overall feel/atmo
 
 Verification is measured, never eyeballed — and the measurement is **computed styles, not a pixel diff.** Each QA cycle:
 
-1. The QA agent opens the running clone in the Claude Chrome extension and, via `mcp__claude-in-chrome__javascript_tool`, reads each asserted selector's computed styles (`getComputedStyle`) → writes `06-qa/cycle-N/clone-styles.json`.
-2. The orchestrator runs, via Bash:
-   ```
-   node scripts/assert-styles.mjs \
+1. The QA agent opens the running clone in the Claude Chrome extension and, via `mcp__claude-in-chrome__javascript_tool`, reads each asserted selector's computed styles (`getComputedStyle`) → writes `06-qa/cycle-N/clone-styles.json`, scoped by route and viewport: `{ "/": { "desktop": { "<selector>": { "<prop>": "<value>" } } } }`.
+2. The orchestrator runs, via Bash, from `clone-workspace/{name}/` (`<skill-dir>` is the skill directory named at the top of `SKILL.md`):
+   ```bash
+   node "<skill-dir>/scripts/assert-styles.mjs" \
      --assertions 03-design-spec/assertions.json \
      --clone-styles 06-qa/cycle-N/clone-styles.json \
      --out 06-qa/cycle-N/metrics.json
    ```
+   The script exits nonzero when assertions fail; read the failures from `metrics.json` rather than treating the exit as a crash. Each assertion carries `page` and `viewport`, so desktop and mobile values are checked separately (unscoped entries still work). Numeric values compare only when units match: `16px` vs `16%` fails, and other strings such as `1px solid red` must match exactly.
    `assert-styles.mjs` compares the clone's read computed values to the DESIGN.md tokens in `assertions.json` — per selector, the asserted `color/bg/backgroundImage/fontSize/fontWeight/letterSpacing/lineHeight/borderRadius/boxShadow/cursor/transition` (colors normalized to `rgb()`, numerics ±1px / ±0.01em).
 
 `metrics.json`:

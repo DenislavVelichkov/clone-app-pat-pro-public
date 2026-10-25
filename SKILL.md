@@ -9,6 +9,8 @@ allowed-tools: Bash, Read, Write, Edit, Agent
 
 Mission: **own the target, pixel for pixel.** Read every value off the live page (never a screenshot guess), rebuild it, prove the match with measured computed-style assertions, then make it yours.
 
+Skill directory: `${CLAUDE_SKILL_DIR}`. Wherever a reference says `<skill-dir>`, use this path. Bundled script paths are relative to it; artifact paths are relative to `clone-workspace/{name}/`, so scripts run from any directory as `node "<skill-dir>/scripts/assert-styles.mjs" ...`.
+
 > **The contract is law.** [`references/00-contract.md`](references/00-contract.md) defines the workspace layout, exact artifact filenames, stage I/O, the verification gate, the convergence loop, and the agent-prompt standard. Read it first.
 
 ## How this runs — IN-CONVERSATION (read first)
@@ -28,7 +30,7 @@ This skill runs as a **workflow inside a live Claude session**, not a background
 
 **Screenshots are a VISUAL REFERENCE only.** The extension can't reliably write screenshot files to disk in this environment, so **do not build the gate on saved PNGs / pixel-diff.** Screenshots are for you and the user to eyeball the real site vs the clone. The **objective ground truth is computed styles** read via `javascript_tool` (the contract's own rule: CSSOM/computed values beat screenshots).
 
-**The gate = computed-style assertions.** QA reads the clone's computed styles via `javascript_tool`, writes them to JSON, and `scripts/assert-styles.mjs` compares them to the design tokens (`assertions.json` from the DESIGN.md). PASS = 0 style-assertion failures + the build compiles. Plus a visual eyeball of clone vs real site.
+**The gate = computed-style assertions.** QA reads the clone's computed styles via `javascript_tool`, writes them to JSON, and `node "${CLAUDE_SKILL_DIR}/scripts/assert-styles.mjs"` compares them to the design tokens (`assertions.json` from the DESIGN.md). PASS = 0 style-assertion failures + the build compiles. Plus a visual eyeball of clone vs real site.
 
 ## ⛔ STOP-AND-CHECK-IN GATE — after EVERY stage (the rule agents break)
 
