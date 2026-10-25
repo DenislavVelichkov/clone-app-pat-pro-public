@@ -35,7 +35,7 @@ The old approach of manually walking every element by hand is **deleted**. It do
 
 ### Step B — Run assert-styles against the residual regions
 
-Copy the converged `06-qa/cycle-{N}/clone-styles.json` to `09-polish/{page-slug}.clone-styles.json` once. Re-read this page's computed styles at desktop with the QA Step 2 script (`06-qa.md`) and overwrite only the `{PAGE}` → `desktop` branch of your copy, or the whole flat object if the assertions carry no `page` or `viewport`. Then run the comparator the gate uses, from `clone-workspace/{name}/`:
+Copy the converged `06-qa/cycle-{N}/clone-styles.json` to `09-polish/{page-slug}.clone-styles.json` once. Re-read this page's computed styles at desktop with the QA Step 2 script (`06-qa.md`) and overwrite only the `{PAGE}` → `desktop` branch of your copy. If the assertions carry no `page` or `viewport`, overwrite only the selectors you re-read. Then run the comparator the gate uses, from `clone-workspace/{name}/`:
 
 ```bash
 node "<skill-dir>/scripts/assert-styles.mjs" \

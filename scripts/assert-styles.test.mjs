@@ -111,3 +111,22 @@ test("hex colors match their rgb() form", () => {
   assert.equal(r.block.passed, 5);
   assert.deepEqual(r.block.failures.map((f) => f.selector), [".b"]);
 });
+
+test("alpha rounds to 2 decimals and opaque rgba is rgb", () => {
+  const r = run(
+    [
+      { selector: ".a", prop: "color", expected: "rgba(0, 0, 0, 1)" },
+      { selector: ".a", prop: "borderColor", expected: "rgba(0, 0, 0, 0.5)" },
+    ],
+    { ".a": { color: "rgb(0, 0, 0)", borderColor: "rgba(0, 0, 0, 0.502)" } },
+  );
+  assert.equal(r.status, 0);
+});
+
+test("url fragment ids are not read as hex colors", () => {
+  const r = run(
+    [{ selector: ".a", prop: "clipPath", expected: 'url("#fade")' }],
+    { ".a": { clipPath: 'url("#ffaaddee")' } },
+  );
+  assert.equal(r.status, 1);
+});
